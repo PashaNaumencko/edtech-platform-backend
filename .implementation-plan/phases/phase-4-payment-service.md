@@ -1,395 +1,678 @@
-# Phase 4: Payment Service & Billing (Enhanced with Preply Business Model)
-**Sprint 9-10 | Duration: 2 weeks**
+# Phase 4: Payment Service Subgraph
+**Duration: 12 days | Priority: High**
 
-## Phase Objectives
-Implement the Payment Service with **Preply-inspired business model enhancements** including trial-first approach, performance-based commission tiers, and package-based pricing, supporting both per-lesson payments and full-course payments with superior tutor economics.
+## Phase Overview
 
-### Key Preply Adoptions in This Phase
-1. **Trial-First Approach**: Free/low-cost trial lessons with satisfaction guarantee
-2. **Performance-Based Commission Tiers**: 25% → 15% based on teaching hours (better than Preply)
-3. **Package-Based Pricing**: 5-lesson math packages, 8-lesson coding projects
-4. **Enhanced Trial Handling**: 50% commission vs regular lessons (fairer than Preply's 100%)
-5. **Internal Wallet System**: Tutor earnings management with multiple withdrawal methods
+This phase implements the Payment Service following our standardized microservice architecture with DDD + Clean Architecture + Use Case Pattern. It handles payment processing, subscription management, and financial workflows.
 
-## Phase Dependencies
-- **Prerequisites**: Phase 1 (User Service), Phase 2 (Courses Service), Phase 3 (Tutor Matching) completed
-- **Requires**: User authentication, course enrollment data, tutor profiles
-- **Outputs**: Functional payment processing, commission calculation, financial reporting
+### Dependencies
+- **Prerequisites**: Phase 2 (Learning Service) completed
+- **Integrates with**: Learning Service for course purchases
+- **Provides**: Payment processing for all platform transactions
 
-## Detailed Subphases
+## Subphase 4.1: Payment Service Implementation (8 days)
 
-### 4.1 Payment Infrastructure Setup
-**Duration: 2 days | Priority: Critical**
+### Domain Layer Implementation (2 days)
 
-#### PostgreSQL Database Design
-- Payments table with ACID compliance for financial transactions
-- PaymentMethods table for stored payment information
-- Commissions table for platform fee tracking
-- PayoutSchedule table for tutor earnings management
-- Financial audit trail with immutable records
-
-#### Stripe Integration Setup
-- Stripe Connect for marketplace payments
-- Webhook endpoint configuration
-- Payment method tokenization
-- Multi-party payment flows
-- Currency and international payment support
-
-#### ECS Fargate Service
-- Dedicated Payment Service container
-- Enhanced security configuration
-- PCI DSS compliance considerations
-- Monitoring and alerting setup
-
-### 4.2 Enhanced Payment Model Design (Preply-Inspired)
-**Duration: 4 days | Priority: Critical**
-
-#### Trial Lesson Payment Model
+#### Entities (AggregateRoot)
 ```typescript
-interface TrialLessonPayment {
-  trialLessonId: string;
-  studentId: string;
-  tutorId: string;
-  amount: Money; // Free or low-cost
-  platformCommission: Money; // 50% (better than Preply's 100%)
-  tutorEarnings: Money; // 50%
-  satisfactionGuarantee: boolean;
-  replacementEligible: boolean;
-  paymentStatus: TrialPaymentStatus;
+// domain/entities/payment.entity.ts
+import { AggregateRoot } from '@nestjs/cqrs';
+
+export class Payment extends AggregateRoot {
+  constructor(
+    private readonly _id: PaymentId,
+    private readonly _userId: UserId,
+    private readonly _amount: Money,
+    private _status: PaymentStatus,
+    private _stripePaymentIntentId?: string,
+    private readonly _createdAt: Date = new Date(),
+  ) {
+    super();
+  }
+
+  static create(data: CreatePaymentData): Payment {
+    const payment = new Payment(
+      PaymentId.generate(),
+      new UserId(data.userId),
+      new Money(data.amount, data.currency),
+      PaymentStatus.PENDING,
+    );
+
+    payment.apply(new PaymentInitiatedEvent(payment));
+    return payment;
+  }
+
+  confirm(stripePaymentIntentId: string): void {
+    if (this._status !== PaymentStatus.PENDING) {
+      throw new PaymentNotPendingException();
+    }
+
+    this._status = PaymentStatus.COMPLETED;
+    this._stripePaymentIntentId = stripePaymentIntentId;
+    this.apply(new PaymentCompletedEvent(this));
+  }
+
+  fail(reason: string): void {
+    if (this._status !== PaymentStatus.PENDING) {
+      throw new PaymentNotPendingException();
+    }
+
+    this._status = PaymentStatus.FAILED;
+    this.apply(new PaymentFailedEvent(this, reason));
+  }
+
+  refund(): void {
+    if (this._status !== PaymentStatus.COMPLETED) {
+      throw new PaymentNotCompletedException();
+    }
+
+    this._status = PaymentStatus.REFUNDED;
+    this.apply(new PaymentRefundedEvent(this));
+  }
+
+  // Getters
+  get id(): PaymentId { return this._id; }
+  get userId(): UserId { return this._userId; }
+  get amount(): Money { return this._amount; }
+  get status(): PaymentStatus { return this._status; }
+  get stripePaymentIntentId(): string | undefined { return this._stripePaymentIntentId; }
+  get createdAt(): Date { return this._createdAt; }
+}
+
+// domain/entities/subscription.entity.ts
+export class Subscription extends AggregateRoot {
+  constructor(
+    private readonly _id: SubscriptionId,
+    private readonly _userId: UserId,
+    private readonly _planId: PlanId,
+    private readonly _price: Money,
+    private _status: SubscriptionStatus,
+    private _currentPeriodStart: Date,
+    private _currentPeriodEnd: Date,
+    private _stripeSubscriptionId?: string,
+    private readonly _createdAt: Date = new Date(),
+  ) {
+    super();
+  }
+
+  static create(data: CreateSubscriptionData): Subscription {
+    const subscription = new Subscription(
+      SubscriptionId.generate(),
+      new UserId(data.userId),
+      new PlanId(data.planId),
+      new Money(data.price, data.currency),
+      SubscriptionStatus.ACTIVE,
+      new Date(),
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    );
+
+    subscription.apply(new SubscriptionCreatedEvent(subscription));
+    return subscription;
+  }
+
+  renew(): void {
+    if (this._status !== SubscriptionStatus.ACTIVE) {
+      throw new SubscriptionNotActiveException();
+    }
+
+    this._currentPeriodStart = this._currentPeriodEnd;
+    this._currentPeriodEnd = new Date(this._currentPeriodEnd.getTime() + 30 * 24 * 60 * 60 * 1000);
+    
+    this.apply(new SubscriptionRenewedEvent(this));
+  }
+
+  cancel(): void {
+    if (this._status === SubscriptionStatus.CANCELLED) {
+      throw new SubscriptionAlreadyCancelledException();
+    }
+
+    this._status = SubscriptionStatus.CANCELLED;
+    this.apply(new SubscriptionCancelledEvent(this));
+  }
 }
 ```
 
-#### Performance-Based Lesson Payment Model
+#### Value Objects
 ```typescript
-interface LessonPayment {
-  lessonId: string;
-  studentId: string;
-  tutorId: string;
-  amount: Money;
-  tutorTeachingHours: number; // For commission tier calculation
-  platformCommissionRate: number; // 25% → 15% based on experience
-  platformCommission: Money;
-  tutorEarnings: Money;
-  lessonType: 'TRIAL' | 'REGULAR' | 'PACKAGE';
-  paymentStatus: LessonPaymentStatus;
-  confirmationRequired: boolean;
+// domain/value-objects/money.vo.ts
+export class Money {
+  constructor(
+    private readonly amount: number,
+    private readonly currency: Currency,
+  ) {
+    if (amount < 0) {
+      throw new InvalidAmountException();
+    }
+  }
+
+  getAmount(): number { return this.amount; }
+  getCurrency(): Currency { return this.currency; }
+  
+  add(other: Money): Money {
+    if (this.currency !== other.currency) {
+      throw new CurrencyMismatchException();
+    }
+    return new Money(this.amount + other.amount, this.currency);
+  }
+
+  multiply(factor: number): Money {
+    if (factor < 0) {
+      throw new InvalidFactorException();
+    }
+    return new Money(this.amount * factor, this.currency);
+  }
+
+  isGreaterThan(other: Money): boolean {
+    if (this.currency !== other.currency) {
+      throw new CurrencyMismatchException();
+    }
+    return this.amount > other.amount;
+  }
+}
+
+// domain/value-objects/currency.vo.ts
+export enum Currency {
+  USD = 'USD',
+  EUR = 'EUR',
+  GBP = 'GBP',
 }
 ```
 
-#### Package-Based Payment Model
+### Application Layer Implementation (2 days)
+
+#### Use Cases
 ```typescript
-interface PackagePayment {
-  packageId: string;
-  packageType: 'MATH_5_LESSONS' | 'CODING_8_LESSONS' | 'CUSTOM';
-  studentId: string;
-  tutorId: string;
-  totalAmount: Money;
-  lessonsIncluded: number;
-  lessonsUsed: number;
-  platformCommissionRate: number;
-  platformCommission: Money;
-  tutorEarnings: Money;
-  expirationDate: Date;
-  autoRenewal: boolean;
+// application/use-cases/process-payment/process-payment.usecase.ts
+@Injectable()
+export class ProcessPaymentUseCase implements IUseCase<ProcessPaymentRequest, ProcessPaymentResponse> {
+  constructor(
+    private paymentRepository: PaymentRepository,
+    private stripeService: StripeService,
+    private eventBus: EventBus,
+  ) {}
+
+  async execute(request: ProcessPaymentRequest): Promise<ProcessPaymentResponse> {
+    // 1. Create payment entity
+    const payment = Payment.create({
+      userId: request.userId,
+      amount: request.amount,
+      currency: request.currency,
+      description: request.description,
+    });
+
+    // 2. Persist payment
+    const savedPayment = await this.paymentRepository.save(payment);
+
+    // 3. Create Stripe PaymentIntent
+    const paymentIntent = await this.stripeService.createPaymentIntent({
+      amount: request.amount * 100, // Stripe expects cents
+      currency: request.currency.toLowerCase(),
+      metadata: {
+        paymentId: savedPayment.id.getValue(),
+        userId: request.userId,
+      },
+    });
+
+    // 4. Update payment with Stripe ID
+    savedPayment.setStripePaymentIntentId(paymentIntent.id);
+    await this.paymentRepository.save(savedPayment);
+
+    // 5. Commit events
+    savedPayment.commit();
+
+    return ProcessPaymentResponse.fromDomain(savedPayment, paymentIntent.client_secret);
+  }
+}
+
+// application/use-cases/create-subscription/create-subscription.usecase.ts
+@Injectable()
+export class CreateSubscriptionUseCase implements IUseCase<CreateSubscriptionRequest, CreateSubscriptionResponse> {
+  constructor(
+    private subscriptionRepository: SubscriptionRepository,
+    private stripeService: StripeService,
+    private userServiceClient: UserServiceClient,
+  ) {}
+
+  async execute(request: CreateSubscriptionRequest): Promise<CreateSubscriptionResponse> {
+    // 1. Validate user exists
+    const user = await this.userServiceClient.getUser(request.userId);
+    if (!user) {
+      throw new UserNotFoundException();
+    }
+
+    // 2. Create subscription entity
+    const subscription = Subscription.create({
+      userId: request.userId,
+      planId: request.planId,
+      price: request.price,
+      currency: request.currency,
+    });
+
+    // 3. Create Stripe subscription
+    const stripeSubscription = await this.stripeService.createSubscription({
+      customer: user.stripeCustomerId,
+      price: request.stripePriceId,
+      metadata: {
+        subscriptionId: subscription.id.getValue(),
+        userId: request.userId,
+      },
+    });
+
+    // 4. Update subscription with Stripe ID
+    subscription.setStripeSubscriptionId(stripeSubscription.id);
+
+    // 5. Persist
+    const savedSubscription = await this.subscriptionRepository.save(subscription);
+
+    // 6. Commit events
+    savedSubscription.commit();
+
+    return CreateSubscriptionResponse.fromDomain(savedSubscription);
+  }
 }
 ```
 
-#### Commission Tier System
+### Infrastructure Layer Implementation (3 days)
+
+#### Stripe Integration
 ```typescript
-interface CommissionTier {
-  tierName: string;
-  minTeachingHours: number;
-  maxTeachingHours: number;
-  commissionRate: number;
-}
+// infrastructure/stripe/services/stripe-payment.service.ts
+@Injectable()
+export class StripePaymentService {
+  private stripe: Stripe;
 
-const COMMISSION_TIERS: CommissionTier[] = [
-  { tierName: 'New Tutor', minTeachingHours: 0, maxTeachingHours: 20, commissionRate: 0.25 },
-  { tierName: 'Active Tutor', minTeachingHours: 21, maxTeachingHours: 50, commissionRate: 0.22 },
-  { tierName: 'Experienced Tutor', minTeachingHours: 51, maxTeachingHours: 100, commissionRate: 0.20 },
-  { tierName: 'Master Tutor', minTeachingHours: 101, maxTeachingHours: 200, commissionRate: 0.18 },
-  { tierName: 'Elite Tutor', minTeachingHours: 201, maxTeachingHours: Infinity, commissionRate: 0.15 }
-];
-```
+  constructor(
+    private configService: ConfigService,
+  ) {
+    this.stripe = new Stripe(this.configService.get('STRIPE_SECRET_KEY'), {
+      apiVersion: '2023-10-16',
+    });
+  }
 
-#### Internal Wallet System
-```typescript
-interface TutorWallet {
-  tutorId: string;
-  availableBalance: Money;
-  pendingBalance: Money; // Awaiting lesson confirmations
-  totalEarnings: Money;
-  withdrawalMethods: WithdrawalMethod[];
-  payoutSchedule: 'WEEKLY' | 'MONTHLY' | 'ON_DEMAND';
-  minWithdrawalAmount: Money;
-}
-```
+  async createPaymentIntent(data: CreatePaymentIntentData): Promise<Stripe.PaymentIntent> {
+    return await this.stripe.paymentIntents.create({
+      amount: data.amount,
+      currency: data.currency,
+      metadata: data.metadata,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+  }
 
-### 4.3 Trial-First & Satisfaction Guarantee System
-**Duration: 3 days | Priority: Critical**
+  async confirmPaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+    return await this.stripe.paymentIntents.confirm(paymentIntentId);
+  }
 
-#### Trial Lesson Workflow
-- **Free/Low-Cost Trial Setup**: Configurable trial lesson pricing
-- **Satisfaction Guarantee**: Automatic tutor replacement if unsatisfied
-- **Trial-to-Regular Conversion**: Streamlined upgrade path
-- **Quality Assurance**: Trial lesson completion confirmation system
+  async createCustomer(data: CreateCustomerData): Promise<Stripe.Customer> {
+    return await this.stripe.customers.create({
+      email: data.email,
+      name: data.name,
+      metadata: {
+        userId: data.userId,
+      },
+    });
+  }
 
-#### Tutor Replacement System
-```typescript
-interface TutorReplacementRequest {
-  originalTrialId: string;
-  studentId: string;
-  originalTutorId: string;
-  replacementReason: string;
-  preferredNewTutor?: string;
-  refundRequested: boolean;
-  replacementStatus: 'PENDING' | 'MATCHED' | 'COMPLETED';
-}
-```
+  async createSubscription(data: CreateStripeSubscriptionData): Promise<Stripe.Subscription> {
+    return await this.stripe.subscriptions.create({
+      customer: data.customer,
+      items: [{
+        price: data.price,
+      }],
+      metadata: data.metadata,
+    });
+  }
 
-#### Lesson Confirmation System
-- **Student confirmation required**: Payment only released after confirmation
-- **Auto-confirmation**: After 72 hours if no issues reported
-- **Dispute handling**: Process for lesson quality disputes
-- **Refund automation**: Quick refunds for unsatisfactory trials
+  async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return await this.stripe.subscriptions.cancel(subscriptionId);
+  }
 
-#### Package Conversion Incentives
-- **Trial-to-package discounts**: Encourage package purchases after successful trials
-- **Loyalty bonuses**: Reduced commission rates for consistent tutors
-- **Bulk purchase benefits**: Better rates for larger lesson packages
-
-### 4.4 Payment Domain Implementation
-**Duration: 3 days | Priority: Critical**
-
-#### Domain Layer Architecture
-- Payment aggregate with dual payment types
-- Money value object with currency support
-- PaymentMethod value object with tokenization
-- Commission calculation domain service
-- Refund and dispute handling logic
-
-#### Payment States and Workflows
-- **Lesson Payments**: Pending → Authorized → Captured → Completed
-- **Course Payments**: Pending → Authorized → Captured → Access Granted
-- **Refunds**: Requested → Reviewed → Approved/Denied → Processed
-- **Disputes**: Opened → Under Review → Resolved
-
-#### Enhanced Business Rules
-- **Trial lesson payments**: 50% commission, immediate tutor replacement if unsatisfied
-- **Regular lesson payments**: Performance-based commission tiers (25% → 15%)
-- **Package payments**: Bulk discount pricing, flexible usage tracking
-- **Lesson confirmation**: Student must confirm before tutor payment release
-- **Commission tier progression**: Automatic tier upgrades based on teaching hours
-- **Wallet management**: Secure internal wallet with multiple withdrawal options
-
-### 4.5 Stripe Integration Implementation
-**Duration: 4 days | Priority: Critical**
-
-#### Stripe Connect Setup
-```typescript
-interface StripeConnectFlow {
-  createConnectedAccount(tutorId: string): Promise<string>;
-  verifyIdentity(accountId: string): Promise<boolean>;
-  setupPayoutSchedule(accountId: string, schedule: PayoutSchedule): Promise<void>;
-  processMarketplacePayment(payment: PaymentRequest): Promise<PaymentResult>;
+  async refundPayment(paymentIntentId: string, amount?: number): Promise<Stripe.Refund> {
+    return await this.stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      amount,
+    });
+  }
 }
 ```
 
-#### Payment Processing
-- **Lesson Payments**: Hold funds until lesson completion
-- **Course Payments**: Immediate processing with access control
-- **Split Payments**: Automatic distribution to tutors (80%) and platform (20%)
-- **Failed Payment Handling**: Retry logic and failure notifications
-- **Webhook Processing**: Real-time payment status updates
+#### Webhook Handling
+```typescript
+// infrastructure/stripe/webhooks/stripe-webhook.handler.ts
+@Injectable()
+export class StripeWebhookHandler {
+  constructor(
+    private paymentRepository: PaymentRepository,
+    private subscriptionRepository: SubscriptionRepository,
+    private configService: ConfigService,
+  ) {}
 
-#### Security and Compliance
-- PCI DSS compliance for payment data handling
-- Encryption of sensitive financial information
-- Secure webhook signature verification
-- Payment method tokenization
-- Fraud detection integration
+  async handleWebhook(signature: string, payload: Buffer): Promise<void> {
+    let event: Stripe.Event;
 
-### 4.6 Application Layer Implementation
-**Duration: 2 days | Priority: Critical**
+    try {
+      event = Stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        this.configService.get('STRIPE_WEBHOOK_SECRET')
+      );
+    } catch (err) {
+      throw new InvalidStripeSignatureException();
+    }
 
-#### Enhanced CQRS Commands
-- ProcessTrialPayment, ProcessLessonPayment, ProcessPackagePayment
-- **ConfirmLessonCompletion**, **RequestTutorReplacement**
-- **CalculateCommissionTier**, **UpdateTutorWallet**
-- RefundPayment, CancelPayment
-- SetupPaymentMethod, UpdatePaymentMethod
-- **ProcessWalletWithdrawal**, ProcessPayout
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await this.handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        break;
+      case 'payment_intent.payment_failed':
+        await this.handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+      case 'invoice.payment_succeeded':
+        await this.handleSubscriptionPayment(event.data.object as Stripe.Invoice);
+        break;
+      case 'customer.subscription.deleted':
+        await this.handleSubscriptionCancelled(event.data.object as Stripe.Subscription);
+        break;
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+  }
 
-#### Enhanced CQRS Queries
-- GetPaymentHistory, GetTrialPayments, GetLessonPayments, **GetPackagePayments**
-- **GetTutorCommissionTier**, GetTutorEarnings, **GetTutorWalletBalance**
-- GetPlatformRevenue, **GetCommissionTierReport**
-- **GetTrialConversionMetrics**, GetPayoutSchedule
-- GetRefundRequests, **GetTutorReplacementRequests**, GetPaymentAnalytics
+  private async handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    const paymentId = paymentIntent.metadata.paymentId;
+    const payment = await this.paymentRepository.findById(paymentId);
+    
+    if (payment) {
+      payment.confirm(paymentIntent.id);
+      await this.paymentRepository.save(payment);
+      payment.commit();
+    }
+  }
 
-#### Enhanced Payment Services
-- **Trial lesson service** with satisfaction guarantee
-- **Commission tier calculation service** with performance tracking
-- **Tutor wallet service** with multiple withdrawal methods
-- **Package management service** with usage tracking
-- Stripe service for payment processing
-- Payout scheduling service
-- Refund and dispute management service
+  private async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    const paymentId = paymentIntent.metadata.paymentId;
+    const payment = await this.paymentRepository.findById(paymentId);
+    
+    if (payment) {
+      payment.fail(paymentIntent.last_payment_error?.message || 'Payment failed');
+      await this.paymentRepository.save(payment);
+      payment.commit();
+    }
+  }
+}
+```
 
-### 4.7 Infrastructure Layer Implementation
-**Duration: 3 days | Priority: Critical**
+#### PostgreSQL Integration
+```typescript
+// infrastructure/database/entities/payment.orm-entity.ts
+@Entity('payments')
+export class PaymentOrmEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-#### Enhanced Database Integration
-- PostgreSQL repository with ACID transactions
-- **Commission tier tracking** and history
-- **Tutor wallet balance** management
-- **Trial lesson and replacement** data
-- Financial data encryption at rest
-- Audit trail implementation
-- Backup and recovery procedures
+  @Column('uuid')
+  userId: string;
 
-#### Enhanced External Service Integration
-- Stripe API client with retry logic
-- **Multiple withdrawal method integration** (PayPal, Wise, etc.)
-- Webhook processing with signature verification
-- Currency conversion service integration
-- Tax calculation service integration
-- **Lesson confirmation notification** service
+  @Column('decimal', { precision: 10, scale: 2 })
+  amount: number;
 
-#### Enhanced REST API Controllers
-- **Trial lesson processing** endpoints
-- **Package purchase and management** endpoints
-- **Tutor wallet and withdrawal** endpoints
-- **Commission tier tracking** endpoints
-- Payment method management
-- Financial reporting endpoints
-- Webhook handling endpoints
-- Admin and analytics APIs
+  @Column({ length: 3 })
+  currency: string;
 
-### 4.8 Financial Reporting & Analytics
-**Duration: 2 days | Priority: High**
+  @Column()
+  status: string;
 
-#### Enhanced Reporting Dashboard
-- **Trial-to-regular conversion metrics**
-- **Commission tier distribution** analytics
-- **Tutor wallet and withdrawal** tracking
-- **Package purchase patterns** analysis
-- Real-time payment processing metrics
-- Commission and revenue analytics
-- Tutor earnings and payout tracking
-- Payment success/failure rates
-- Refund and dispute statistics
+  @Column({ nullable: true })
+  stripePaymentIntentId: string;
 
-#### Enhanced Financial Compliance
-- **Performance-based commission** audit trails
-- **Trial lesson satisfaction** tracking
-- **Tutor replacement cost** analysis
-- Transaction audit trails
-- Regulatory reporting preparation
-- Tax reporting data structure
-- Revenue recognition principles
-- Financial reconciliation processes
+  @Column({ nullable: true })
+  description: string;
 
-### 4.9 Testing & Validation
-**Duration: 1 day | Priority: High**
+  @CreateDateColumn()
+  createdAt: Date;
 
-#### Enhanced Payment Testing
-- **Trial lesson workflow** testing
-- **Commission tier calculation** testing
-- **Tutor replacement process** testing
-- **Package purchase and usage** testing
-- Stripe test mode integration
-- Edge case and error handling testing
-- Security penetration testing
-- Load testing for high-volume transactions
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
+
+// infrastructure/database/repositories/payment.repository.impl.ts
+@Injectable()
+export class PaymentRepositoryImpl implements PaymentRepository {
+  constructor(
+    @InjectRepository(PaymentOrmEntity)
+    private paymentOrmRepository: Repository<PaymentOrmEntity>,
+    private paymentMapper: PaymentMapper,
+  ) {}
+
+  async save(payment: Payment): Promise<Payment> {
+    const ormEntity = this.paymentMapper.toOrmEntity(payment);
+    const savedEntity = await this.paymentOrmRepository.save(ormEntity);
+    return this.paymentMapper.toDomain(savedEntity);
+  }
+
+  async findById(id: string): Promise<Payment | null> {
+    const entity = await this.paymentOrmRepository.findOne({ where: { id } });
+    return entity ? this.paymentMapper.toDomain(entity) : null;
+  }
+
+  async findByUser(userId: string): Promise<Payment[]> {
+    const entities = await this.paymentOrmRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    return entities.map(entity => this.paymentMapper.toDomain(entity));
+  }
+
+  async findByStripePaymentIntentId(stripeId: string): Promise<Payment | null> {
+    const entity = await this.paymentOrmRepository.findOne({
+      where: { stripePaymentIntentId: stripeId },
+    });
+    return entity ? this.paymentMapper.toDomain(entity) : null;
+  }
+}
+```
+
+### Presentation Layer Implementation (1 day)
+
+#### Internal HTTP Controllers
+```typescript
+// presentation/http/controllers/internal/payments.internal.controller.ts
+@Controller('internal/payments')
+@UseGuards(ServiceAuthGuard)
+export class InternalPaymentsController {
+  constructor(
+    private processPaymentUseCase: ProcessPaymentUseCase,
+    private getPaymentUseCase: GetPaymentUseCase,
+    private refundPaymentUseCase: RefundPaymentUseCase,
+  ) {}
+
+  @Post()
+  async processPayment(@Body() dto: ProcessPaymentDto): Promise<PaymentDto> {
+    const request = new ProcessPaymentRequest();
+    request.userId = dto.userId;
+    request.amount = dto.amount;
+    request.currency = dto.currency;
+    request.description = dto.description;
+    
+    const response = await this.processPaymentUseCase.execute(request);
+    return response.payment;
+  }
+
+  @Get(':id')
+  async getPayment(@Param('id') id: string): Promise<PaymentDto> {
+    const request = new GetPaymentRequest();
+    request.id = id;
+    
+    const response = await this.getPaymentUseCase.execute(request);
+    return response.payment;
+  }
+
+  @Get('user/:userId')
+  async getUserPayments(@Param('userId') userId: string): Promise<PaymentDto[]> {
+    const request = new GetUserPaymentsRequest();
+    request.userId = userId;
+    
+    const response = await this.getUserPaymentsUseCase.execute(request);
+    return response.payments;
+  }
+
+  @Post(':id/refund')
+  async refundPayment(@Param('id') id: string): Promise<PaymentDto> {
+    const request = new RefundPaymentRequest();
+    request.id = id;
+    
+    const response = await this.refundPaymentUseCase.execute(request);
+    return response.payment;
+  }
+}
+
+// presentation/http/controllers/public/webhook.controller.ts
+@Controller('webhooks')
+export class WebhookController {
+  constructor(
+    private stripeWebhookHandler: StripeWebhookHandler,
+  ) {}
+
+  @Post('stripe')
+  async handleStripeWebhook(
+    @Headers('stripe-signature') signature: string,
+    @Body() payload: Buffer,
+  ): Promise<{ received: boolean }> {
+    await this.stripeWebhookHandler.handleWebhook(signature, payload);
+    return { received: true };
+  }
+}
+```
+
+#### GraphQL Subgraph Schema
+```graphql
+# presentation/graphql/schemas/payment.subgraph.graphql
+extend type Query {
+  payment(id: ID!): Payment
+  userPayments(userId: ID!): [Payment!]!
+  subscription(id: ID!): Subscription
+  userSubscription(userId: ID!): Subscription
+}
+
+extend type Mutation {
+  processPayment(input: ProcessPaymentInput!): PaymentResult! @auth(requires: USER)
+  createSubscription(input: CreateSubscriptionInput!): Subscription! @auth(requires: USER)
+  cancelSubscription(id: ID!): Subscription! @auth(requires: USER)
+  refundPayment(id: ID!): Payment! @auth(requires: ADMIN)
+}
+
+type Payment @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  amount: Float!
+  currency: String!
+  status: PaymentStatus!
+  description: String
+  stripePaymentIntentId: String
+  createdAt: AWSDateTime!
+  user: User @provides(fields: "userId")
+}
+
+type Subscription @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  planId: ID!
+  price: Float!
+  currency: String!
+  status: SubscriptionStatus!
+  currentPeriodStart: AWSDateTime!
+  currentPeriodEnd: AWSDateTime!
+  createdAt: AWSDateTime!
+  user: User @provides(fields: "userId")
+}
+
+type PaymentResult {
+  payment: Payment!
+  clientSecret: String!
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  UNPAID
+}
+
+# Federation relationships
+extend type User @key(fields: "id") {
+  id: ID! @external
+  payments: [Payment!]! @requires(fields: "id")
+  subscription: Subscription @requires(fields: "id")
+}
+
+extend type Course @key(fields: "id") {
+  id: ID! @external
+  purchases: [Payment!]! @requires(fields: "id")
+}
+
+input ProcessPaymentInput {
+  amount: Float!
+  currency: String!
+  description: String!
+}
+
+input CreateSubscriptionInput {
+  planId: ID!
+  stripePriceId: String!
+}
+```
+
+## Subphase 4.2: Financial Features & Integration (4 days)
+
+### Subscription Management (2 days)
+- Recurring payment handling
+- Subscription lifecycle management  
+- Proration and upgrades/downgrades
+- Subscription analytics and reporting
+
+### GraphQL Integration (2 days)
+- Lambda resolvers for payment operations
+- Federation with Learning service (course purchases)
+- Federation with User service (payment history)
+- Financial reporting resolvers
 
 ## Success Criteria
 
 ### Technical Acceptance Criteria
-- Payment Service deploys successfully with PCI compliance
-- Both lesson and course payment flows work correctly
-- Stripe integration handles all payment scenarios
-- Commission calculations are accurate and consistent
-- Database transactions maintain ACID properties
-- Webhook processing is reliable and secure
+- ✅ Payment processing with Stripe integration
+- ✅ Webhook handling for payment events
+- ✅ Subscription management functionality
+- ✅ Payment subgraph schema validates
+- ✅ Secure API endpoints with authentication
+- ✅ Database transactions for payment integrity
 
-### Financial Acceptance Criteria
-- **Performance-based commission tiers** calculate correctly (25% → 15%)
-- **Trial lesson commission** (50%) processed correctly
-- **Package-based pricing** and usage tracking works
-- **Tutor wallet system** manages balances and withdrawals accurately
-- **Trial-to-regular conversion** tracking functions properly
-- **Satisfaction guarantee and tutor replacement** system operational
-- Payment success rate > 98%
-- Refund processing works within SLA
-- Financial reporting provides accurate insights
-- Audit trails capture all financial transactions
+### Functional Acceptance Criteria
+- ✅ Users can make course payments
+- ✅ Subscription creation and management
+- ✅ Payment status tracking and updates
+- ✅ Refund processing capabilities
+- ✅ Invoice generation and management
+- ✅ Payment history and reporting
 
-### Security Acceptance Criteria
-- PCI DSS compliance requirements met
-- Payment data properly encrypted
-- Webhook signatures verified
-- No sensitive data in logs
-- Fraud detection mechanisms active
+### Performance Criteria  
+- ✅ Payment processing < 3 seconds
+- ✅ Webhook processing < 1 second
+- ✅ Payment queries < 200ms
+- ✅ 99.9% payment success rate
 
-## Risk Mitigation
+## Dependencies & Integration
+- **Learning Service**: Course purchase processing
+- **User Service**: Customer and payment history
+- **Notification Service**: Payment confirmations
+- **Analytics Service**: Financial reporting
 
-### Technical Risks
-- **Payment Processing Failures**: Implement comprehensive retry and fallback mechanisms
-- **Database Consistency**: Use database transactions and implement saga patterns
-- **Stripe API Changes**: Version pinning and comprehensive testing
-- **Webhook Reliability**: Implement idempotency and duplicate detection
-
-### Financial Risks
-- **Commission Calculation Errors**: Comprehensive testing and validation
-- **Payment Disputes**: Clear refund policies and dispute resolution processes
-- **Currency Fluctuations**: Real-time exchange rate handling
-- **Regulatory Compliance**: Regular compliance audits and updates
-
-### Security Risks
-- **Payment Fraud**: Implement fraud detection and monitoring
-- **Data Breaches**: Encryption, access controls, and security audits
-- **PCI Compliance**: Regular compliance assessments and updates
-
-## Key Performance Indicators
-
-### Performance Metrics
-- Payment processing time: < 5 seconds
-- Database transaction time: < 1 second
-- Webhook processing time: < 2 seconds
-- API response time: < 500ms
-
-### Financial Metrics
-- Payment success rate: > 98%
-- Commission calculation accuracy: 100%
-- Payout processing time: < 24 hours
-- Refund processing time: < 48 hours
-
-### Business Metrics
-- Revenue per transaction
-- Average transaction value
-- Payment method adoption rates
-- Customer payment satisfaction
-
-## Phase Timeline
-
-| Subphase | Duration | Dependencies | Critical Path |
-|----------|----------|--------------|---------------|
-| 4.1 Infrastructure Setup | 2 days | Phase 1-3 | Yes |
-| 4.2 Enhanced Payment Model Design | 4 days | 4.1 | Yes |
-| 4.3 Trial-First & Satisfaction Guarantee System | 3 days | 4.2 | Yes |
-| 4.4 Payment Domain Implementation | 3 days | 4.3 | Yes |
-| 4.5 Stripe Integration | 4 days | 4.4 | Yes |
-| 4.6 Application Layer | 2 days | 4.5 | Yes |
-| 4.7 Infrastructure Layer | 3 days | 4.6 | Yes |
-| 4.8 Financial Reporting | 2 days | 4.7 | No |
-| 4.9 Testing & Validation | 1 day | 4.7 | Yes |
-
-**Total Duration**: 24 days (4.8 weeks)  
-**Buffer**: +2 days for trial system testing and compliance  
-**Updated Timeline**: Sprint 9-11 (5 weeks total with buffer)
-
----
-
-**Previous Phase**: [Phase 3: Tutor Matching Service](phase-3-tutor-matching.md)  
-**Next Phase**: [Phase 5: Reviews & Rating System](phase-5-reviews-service.md) 
+This service handles all financial transactions and subscription management for the platform! 

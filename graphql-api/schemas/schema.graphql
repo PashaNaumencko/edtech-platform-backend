@@ -1,0 +1,399 @@
+# EdTech Platform GraphQL Schema
+
+# User Management
+type User {
+  id: ID!
+  email: String!
+  profile: UserProfile!
+  isTutor: Boolean!
+  tutorProfile: TutorProfile
+  socialAccounts: [SocialAccount!]!
+  isActive: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type UserProfile {
+  firstName: String!
+  lastName: String!
+  fullName: String!
+  timezone: String
+  locale: String
+  preferredLanguage: String
+  videoIntroUrl: String
+  onboardingCompleted: Boolean!
+}
+
+type TutorProfile {
+  isActive: Boolean!
+  hourlyRate: Float
+  currency: String
+  subjects: [String!]!
+  languages: [String!]!
+  experience: String
+  education: String
+  description: String
+  rating: Float
+  totalReviews: Int!
+  availability: TutorAvailability
+}
+
+type TutorAvailability {
+  timezone: String!
+  weeklySchedule: [WeeklySlot!]!
+  exceptions: [AvailabilityException!]!
+}
+
+type WeeklySlot {
+  dayOfWeek: DayOfWeek!
+  startTime: String! # HH:mm format
+  endTime: String!   # HH:mm format
+}
+
+type AvailabilityException {
+  date: AWSDate!
+  isAvailable: Boolean!
+  startTime: String
+  endTime: String
+  reason: String
+}
+
+type SocialAccount {
+  provider: SocialProvider!
+  providerEmail: String!
+  linkedAt: AWSDateTime!
+}
+
+# Learning Management
+type Course {
+  id: ID!
+  title: String!
+  description: String!
+  tutor: User!
+  subject: String!
+  level: CourseLevel!
+  duration: Int! # minutes
+  price: Float!
+  currency: String!
+  rating: Float
+  totalReviews: Int!
+  enrollmentCount: Int!
+  isActive: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Lesson {
+  id: ID!
+  course: Course!
+  title: String!
+  description: String
+  duration: Int! # minutes
+  videoUrl: String
+  materials: [LessonMaterial!]!
+  order: Int!
+  isPublished: Boolean!
+}
+
+type LessonMaterial {
+  id: ID!
+  title: String!
+  type: MaterialType!
+  url: String!
+  size: Int
+}
+
+# Booking & Sessions
+type Booking {
+  id: ID!
+  student: User!
+  tutor: User!
+  course: Course
+  scheduledAt: AWSDateTime!
+  duration: Int! # minutes
+  status: BookingStatus!
+  price: Float!
+  currency: String!
+  notes: String
+  createdAt: AWSDateTime!
+}
+
+type Session {
+  id: ID!
+  booking: Booking!
+  startTime: AWSDateTime
+  endTime: AWSDateTime
+  status: SessionStatus!
+  recordingUrl: String
+  notes: String
+  rating: SessionRating
+}
+
+type SessionRating {
+  studentRating: Int
+  tutorRating: Int
+  studentFeedback: String
+  tutorFeedback: String
+  createdAt: AWSDateTime!
+}
+
+# Communication
+type Conversation {
+  id: ID!
+  participants: [User!]!
+  lastMessage: Message
+  unreadCount: Int!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Message {
+  id: ID!
+  conversation: Conversation!
+  sender: User!
+  content: String!
+  type: MessageType!
+  attachments: [MessageAttachment!]!
+  createdAt: AWSDateTime!
+}
+
+type MessageAttachment {
+  id: ID!
+  type: AttachmentType!
+  url: String!
+  fileName: String!
+  size: Int!
+}
+
+# Enums
+enum SocialProvider {
+  GOOGLE
+  FACEBOOK
+  APPLE
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum MaterialType {
+  PDF
+  VIDEO
+  AUDIO
+  DOCUMENT
+  PRESENTATION
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  BOOKING_REQUEST
+  BOOKING_CONFIRMATION
+  SYSTEM
+}
+
+enum AttachmentType {
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+}
+
+# Inputs
+input CreateUserInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  signupMethod: String!
+  isTutor: Boolean = false
+  timezone: String
+  locale: String
+  preferredLanguage: String
+  password: String
+  socialAuth: SocialAuthInput
+}
+
+input SocialAuthInput {
+  provider: SocialProvider!
+  providerUserId: String!
+  providerEmail: String!
+  accessToken: String!
+}
+
+input UpdateUserProfileInput {
+  firstName: String
+  lastName: String
+  timezone: String
+  locale: String
+  preferredLanguage: String
+  videoIntroUrl: String
+}
+
+input BecomeTutorInput {
+  hourlyRate: Float!
+  currency: String!
+  subjects: [String!]!
+  languages: [String!]!
+  experience: String
+  education: String
+  description: String!
+}
+
+input CreateCourseInput {
+  title: String!
+  description: String!
+  subject: String!
+  level: CourseLevel!
+  duration: Int!
+  price: Float!
+  currency: String!
+}
+
+input CreateBookingInput {
+  tutorId: ID!
+  courseId: ID
+  scheduledAt: AWSDateTime!
+  duration: Int!
+  notes: String
+}
+
+input SendMessageInput {
+  conversationId: ID!
+  content: String!
+  type: MessageType!
+  attachments: [MessageAttachmentInput!]
+}
+
+input MessageAttachmentInput {
+  type: AttachmentType!
+  url: String!
+  fileName: String!
+  size: Int!
+}
+
+# Response types
+type CreateUserResponse {
+  user: User
+  errors: [FieldError!]
+}
+
+type FieldError {
+  field: String!
+  message: String!
+}
+
+# Queries
+type Query {
+  # User queries
+  me: User
+  user(id: ID!): User
+  searchTutors(
+    query: String
+    subjects: [String!]
+    languages: [String!]
+    maxHourlyRate: Float
+    minRating: Float
+    availability: AvailabilityFilterInput
+    limit: Int = 20
+    offset: Int = 0
+  ): [User!]!
+
+  # Course queries
+  course(id: ID!): Course
+  courses(
+    subject: String
+    level: CourseLevel
+    tutorId: ID
+    limit: Int = 20
+    offset: Int = 0
+  ): [Course!]!
+
+  # Booking queries
+  booking(id: ID!): Booking
+  myBookings(status: BookingStatus, limit: Int = 20, offset: Int = 0): [Booking!]!
+
+  # Communication queries
+  conversation(id: ID!): Conversation
+  myConversations(limit: Int = 20, offset: Int = 0): [Conversation!]!
+  messages(conversationId: ID!, limit: Int = 50, offset: Int = 0): [Message!]!
+}
+
+# Mutations
+type Mutation {
+  # User mutations
+  createUser(input: CreateUserInput!): CreateUserResponse!
+  updateProfile(input: UpdateUserProfileInput!): User!
+  becomeTutor(input: BecomeTutorInput!): User!
+  linkSocialAccount(input: SocialAuthInput!): User!
+
+  # Course mutations
+  createCourse(input: CreateCourseInput!): Course!
+  updateCourse(id: ID!, input: CreateCourseInput!): Course!
+  deleteCourse(id: ID!): Boolean!
+
+  # Booking mutations
+  createBooking(input: CreateBookingInput!): Booking!
+  confirmBooking(id: ID!): Booking!
+  cancelBooking(id: ID!, reason: String): Booking!
+
+  # Session mutations
+  startSession(bookingId: ID!): Session!
+  endSession(sessionId: ID!): Session!
+  rateSession(sessionId: ID!, rating: Int!, feedback: String): Session!
+
+  # Communication mutations
+  sendMessage(input: SendMessageInput!): Message!
+  markConversationAsRead(conversationId: ID!): Conversation!
+}
+
+# Subscriptions
+type Subscription {
+  # Real-time messaging
+  messageAdded(conversationId: ID!): Message!
+    @aws_subscribe(mutations: ["sendMessage"])
+
+  # Booking updates
+  bookingUpdated(userId: ID!): Booking!
+    @aws_subscribe(mutations: ["createBooking", "confirmBooking", "cancelBooking"])
+
+  # Session updates
+  sessionUpdated(bookingId: ID!): Session!
+    @aws_subscribe(mutations: ["startSession", "endSession"])
+}
+
+# Additional input types
+input AvailabilityFilterInput {
+  timezone: String!
+  startDate: AWSDate!
+  endDate: AWSDate!
+  startTime: String!
+  endTime: String!
+  daysOfWeek: [DayOfWeek!]
+} 
