@@ -1,5 +1,5 @@
 # Phase 0: Project Setup & Foundation
-**Sprint 1 | Duration: 1 week**
+**Sprint 1 | Duration: 10 days (2 weeks)**
 
 ## 🎯 Phase Objectives
 Establish the foundational project structure, development environment, and database migration infrastructure required for all subsequent phases. This phase creates the scaffolding that enables efficient microservices development with proper database per service architecture.
@@ -8,33 +8,61 @@ Establish the foundational project structure, development environment, and datab
 - **Prerequisites**: None (starting point)
 - **Outputs**: Complete development environment, project structure, migration infrastructure
 
-## 🔧 Subphases
+## 🔧 Enhanced Subphases (12 Total)
 
-### 0.1 Initialize Project Structure
+### 0.1 Prerequisites & Basic Setup
 **Duration: 1 day | Priority: Critical**
 
-#### 0.1.1 Create NestJS Monorepo Structure
+#### 0.1.1 Development Environment Setup
 **Detailed Tasks:**
-- [ ] **Prerequisites Setup**
+- [ ] **Install Required Tools**
   ```bash
-  # Install Node.js 18+ and pnpm
-  node --version  # Should be 18+
-  pnpm --version  # If not installed: npm install -g pnpm
+  # Check Node.js version (should be 18+)
+  node --version
   
-  # Create .nvmrc for Node.js version consistency
-  echo "18" > .nvmrc
-  ```
-
-- [ ] **Initialize NestJS Monorepo**
-  ```bash
-  # Install NestJS CLI globally with pnpm
+  # Install pnpm globally if not installed
+  npm install -g pnpm
+  
+  # Install NestJS CLI globally
   pnpm add -g @nestjs/cli
   
+  # Install Docker and Docker Compose
+  # Verify Docker installation
+  docker --version
+  docker-compose --version
+  ```
+
+- [ ] **Version Control Setup**
+  ```bash
+  # Create .nvmrc for Node.js version consistency
+  echo "18" > .nvmrc
+  
+  # Initialize Git repository
+  git init
+  
+  # Configure Git user (if not already done)
+  git config user.name "Your Name"
+  git config user.email "your.email@example.com"
+  ```
+
+### 0.2 NestJS Monorepo Initialization
+**Duration: 1 day | Priority: Critical**
+
+#### 0.2.1 Create Base Project Structure
+**Detailed Tasks:**
+- [ ] **Initialize NestJS Project**
+  ```bash
   # Create initial NestJS project with pnpm
   nest new edtech-platform-backend --package-manager pnpm
   cd edtech-platform-backend
   
-  # Convert to monorepo structure
+  # Remove default app (we'll use microservices)
+  rm -rf src/
+  ```
+
+- [ ] **Create Microservice Applications**
+  ```bash
+  # Generate all microservice applications
   nest generate app user-service
   nest generate app learning-service
   nest generate app tutor-matching-service
@@ -47,16 +75,26 @@ Establish the foundational project structure, development environment, and datab
   nest generate app ai-service
   ```
 
-- [ ] **Create Shared Libraries**
+### 0.3 Shared Libraries Creation
+**Duration: 1 day | Priority: High**
+
+#### 0.3.1 Core Shared Libraries
+**Detailed Tasks:**
+- [ ] **Generate Core Libraries**
   ```bash
-  # Generate core shared libraries
+  # Generate foundational shared libraries
   nest generate lib shared-types
   nest generate lib shared-utils
   nest generate lib shared-events
   nest generate lib shared-database
   nest generate lib shared-domain
-  
-  # Generate specialized shared libraries
+  ```
+
+#### 0.3.2 Specialized Shared Libraries
+**Detailed Tasks:**
+- [ ] **Generate Specialized Libraries**
+  ```bash
+  # Generate domain-specific shared libraries
   nest generate lib shared-security
   nest generate lib shared-communication
   nest generate lib shared-validation
@@ -64,177 +102,28 @@ Establish the foundational project structure, development environment, and datab
   nest generate lib shared-analytics
   ```
 
-- [ ] **Additional Directory Structure**
+### 0.4 Project Structure & Documentation
+**Duration: 1 day | Priority: High**
+
+#### 0.4.1 Directory Structure Creation
+**Detailed Tasks:**
+- [ ] **Create Infrastructure Directories**
   ```bash
+  # CDK infrastructure
   mkdir -p cdk/{lib/{constructs,stacks},bin}
-  mkdir -p docs/{api,architecture,deployment}
+  
+  # Documentation structure
+  mkdir -p docs/{api-specifications,architecture-decisions,deployment-guides,troubleshooting}
+  
+  # Scripts organization
   mkdir -p scripts/{development,deployment,migration,seed}
+  
+  # Testing structure
   mkdir -p tests/{integration,e2e,performance}
   ```
 
-- [ ] **Documentation Structure**
-  ```bash
-  mkdir -p docs/{api-specifications,architecture-decisions,deployment-guides,troubleshooting}
-  ```
-
-- [ ] **Architecture Pattern Implementation**
-  - Review [Architectural Patterns Guide](../reference/architectural-patterns-guide.md)
-  - Set up DDD + CQRS folder structure per service
-  - Configure EventBridge + Saga pattern infrastructure
-  - Establish local vs inter-service event handling patterns
-
-## 🏗️ Improved Microservice Architecture
-
-### Service Boundary Definitions
-
-#### Core Services
-1. **`user-service`** - Identity & Access Management
-   - User authentication and authorization
-   - Social login integration (Google, Facebook, Apple)
-   - User profile management
-   - Role-based access control
-   - **Database**: PostgreSQL (User identity, roles, permissions)
-
-2. **`learning-service`** (formerly courses-service)
-   - Course creation and management
-   - Lesson structure and content organization
-   - Student enrollment and progress tracking
-   - Learning path management
-   - **Database**: PostgreSQL (Course metadata, enrollments, progress)
-
-3. **`tutor-matching-service`** - Intelligent Matching
-   - Tutor profile and expertise management
-   - Student-tutor matching algorithms
-   - Availability and scheduling
-   - Skill graph and relationships
-   - **Database**: Neo4j (Skill relationships) + DynamoDB (Profiles)
-
-4. **`payment-service`** - Financial Operations
-   - Dual payment models (per-lesson & full-course)
-   - Stripe integration and commission handling (20%)
-   - Financial reporting and analytics
-   - Payout management for tutors
-   - **Database**: PostgreSQL (Financial transactions, ACID compliance)
-
-5. **`reviews-service`** - Trust & Quality
-   - Centralized review system (tutors & courses)
-   - Rating algorithms and aggregation
-   - Content moderation and quality control
-   - Review analytics and insights
-   - **Database**: PostgreSQL (Review analytics, complex queries)
-
-#### Communication & Content Services
-6. **`communication-service`** (merged chat + video)
-   - Real-time messaging and chat
-   - Video call orchestration (Agora.io)
-   - Screen sharing and collaboration tools
-   - Session recording and playback
-   - **Database**: DynamoDB (Messages, call metadata) + Redis (Real-time)
-
-7. **`content-service`** - Media & File Management
-   - File upload and storage (S3)
-   - Content delivery and CDN management
-   - Media processing and optimization
-   - Content versioning and backup
-   - **Database**: DynamoDB (Metadata) + S3 (Files)
-
-#### Platform Services
-8. **`notification-service`** - Unified Notifications
-   - Push notifications (mobile & web)
-   - Email and SMS notifications
-   - In-app notification management
-   - Notification preferences and delivery
-   - **Database**: DynamoDB (Notification queue, preferences)
-
-9. **`analytics-service`** - Business Intelligence
-   - User behavior tracking and analysis
-   - Business metrics and KPI monitoring
-   - Real-time dashboards and reporting
-   - Data warehouse integration
-   - **Database**: DynamoDB (Event storage) + OpenSearch (Analytics)
-
-10. **`ai-service`** - Future Enhancement (V2.0)
-    - RAG-based learning assistant
-    - Personalized learning recommendations
-    - Intelligent content generation
-    - Learning path optimization
-    - **Database**: OpenSearch (Vector embeddings) + DynamoDB
-
-### Enhanced Shared Libraries
-
-#### Core Libraries
-- **`@app/shared-types`** - Common TypeScript interfaces and types
-- **`@app/shared-utils`** - Utility functions and helpers
-- **`@app/shared-events`** - Event definitions and event bus abstractions
-- **`@app/shared-database`** - Database connection and query utilities
-- **`@app/shared-domain`** - Domain primitives and base classes
-
-#### Specialized Libraries
-- **`@app/shared-security`** - Authentication, authorization, encryption utilities
-- **`@app/shared-communication`** - Real-time messaging patterns and WebSocket abstractions
-- **`@app/shared-validation`** - Common validation rules and schemas
-- **`@app/shared-notifications`** - Notification templates and delivery abstractions
-- **`@app/shared-analytics`** - Event tracking and analytics utilities
-
-### Architecture Improvements
-
-#### 1. **Better Domain Boundaries**
-- **Learning Service**: Focused on educational content and progress
-- **Communication Service**: Unified real-time communication (chat + video)
-- **Content Service**: Dedicated media and file management
-
-#### 2. **Separation of Concerns**
-- **Notification Service**: Centralized notification handling
-- **Analytics Service**: Dedicated business intelligence
-- **Content Service**: Extracted from learning service for better scalability
-
-#### 3. **Technology Optimization**
-- **Redis**: Added for real-time communication and caching
-- **Enhanced Shared Libraries**: Better code reuse and consistency
-- **Database per Service**: Maintained proper microservice boundaries
-
-#### 4. **Scalability Considerations**
-- **Communication Service**: Can scale independently for high-volume messaging
-- **Content Service**: Optimized for media delivery and storage
-- **Analytics Service**: Can handle large-scale data processing
-
-### Service Interaction Patterns
-
-```mermaid
-graph TB
-    Users[Users] --> User[user-service]
-    Users --> Learning[learning-service]
-    
-    User --> Matching[tutor-matching-service]
-    Learning --> Payment[payment-service]
-    Matching --> Communication[communication-service]
-    
-    Payment --> Reviews[reviews-service]
-    Communication --> Content[content-service]
-    
-    User --> Notification[notification-service]
-    Learning --> Analytics[analytics-service]
-    
-    AI[ai-service] --> Learning
-    AI --> Analytics
-```
-
-This improved architecture provides:
-- ✅ **Clear domain boundaries** with single responsibilities
-- ✅ **Better scalability** through focused services
-- ✅ **Improved maintainability** with shared libraries
-- ✅ **Enhanced performance** with dedicated caching and communication layers
-- ✅ **Future-ready** with analytics and AI integration points
-
-#### 0.1.2 Initialize Git Repository
+#### 0.4.2 Git Configuration
 **Detailed Tasks:**
-- [ ] **Git Configuration**
-  ```bash
-  git init
-  git config user.name "Your Name"
-  git config user.email "your.email@example.com"
-  ```
-
 - [ ] **Create .gitignore**
   ```gitignore
   # Dependencies
@@ -291,17 +180,12 @@ This improved architecture provides:
     - 'cdk'
   ```
 
-- [ ] **Git Hooks Setup**
-  - Pre-commit hooks for linting and formatting
-  - Pre-push hooks for running tests
-  - Commit message validation
-
-### 0.2 Setup Package Management
+### 0.5 Package Management Configuration
 **Duration: 1 day | Priority: Critical**
 
-#### 0.2.1 Root Package.json Configuration
+#### 0.5.1 Root Package.json Setup
 **Detailed Tasks:**
-- [ ] **Configure NestJS Monorepo Package.json**
+- [ ] **Configure Monorepo Package.json**
   ```json
   {
     "name": "edtech-platform-backend",
@@ -320,25 +204,42 @@ This improved architecture provides:
       "test:cov": "jest --coverage",
       "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
       "test:e2e": "jest --config ./apps/user-service/test/jest-e2e.json",
+      "dev:setup": "./scripts/dev-setup.sh",
+      "dev:reset": "./scripts/dev-reset.sh",
+      "docker:up": "docker-compose up -d",
+      "docker:down": "docker-compose down",
       "migrate:all": "pnpm migrate:user && pnpm migrate:payment && pnpm migrate:reviews && pnpm migrate:learning",
       "migrate:user": "cd apps/user-service && pnpm typeorm:migration:run",
       "migrate:payment": "cd apps/payment-service && pnpm typeorm:migration:run",
       "migrate:reviews": "cd apps/reviews-service && pnpm typeorm:migration:run",
-      "migrate:learning": "cd apps/learning-service && pnpm typeorm:migration:run"
+      "migrate:learning": "cd apps/learning-service && pnpm typeorm:migration:run",
+      "seed:all": "pnpm seed:user && pnpm seed:payment && pnpm seed:reviews && pnpm seed:learning"
     }
   }
   ```
 
-- [ ] **Install Additional Dependencies**
-  - `concurrently` - Run multiple scripts
-  - `husky` - Git hooks
-  - `lint-staged` - Staged file linting
-  - `@nestjs/typeorm` - TypeORM integration
-  - `@nestjs/cqrs` - CQRS pattern support
-
-#### 0.2.2 TypeScript Configuration
+#### 0.5.2 Core Dependencies Installation
 **Detailed Tasks:**
-- [ ] **Root tsconfig.json (NestJS Monorepo)**
+- [ ] **Install NestJS Core Dependencies**
+  ```bash
+  # Core NestJS packages
+  pnpm add @nestjs/common @nestjs/core @nestjs/platform-express
+  pnpm add @nestjs/config @nestjs/typeorm @nestjs/cqrs
+  pnpm add @nestjs/microservices @nestjs/websockets
+  pnpm add reflect-metadata rxjs
+  
+  # Development dependencies
+  pnpm add -D @nestjs/cli @nestjs/schematics @nestjs/testing
+  pnpm add -D typescript ts-node ts-loader
+  pnpm add -D jest @types/jest supertest @types/supertest
+  ```
+
+### 0.6 TypeScript Configuration
+**Duration: 1 day | Priority: High**
+
+#### 0.6.1 Root TypeScript Configuration
+**Detailed Tasks:**
+- [ ] **Create Root tsconfig.json**
   ```json
   {
     "compilerOptions": {
@@ -385,17 +286,18 @@ This improved architecture provides:
   }
   ```
 
-- [ ] **Service-Specific tsconfig.json**
-  - Extend root configuration
-  - Service-specific path mappings
-  - Build output configurations
-
-### 0.3 Code Quality & Standards
+### 0.7 Code Quality & Standards
 **Duration: 1 day | Priority: High**
 
-#### 0.3.1 ESLint Configuration
+#### 0.7.1 ESLint Configuration
 **Detailed Tasks:**
-- [ ] **Root .eslintrc.js**
+- [ ] **Install ESLint Dependencies**
+  ```bash
+  pnpm add -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+  pnpm add -D eslint-config-prettier eslint-plugin-prettier
+  ```
+
+- [ ] **Create .eslintrc.js**
   ```javascript
   module.exports = {
     root: true,
@@ -415,13 +317,13 @@ This improved architecture provides:
   };
   ```
 
-- [ ] **Service-Specific ESLint Rules**
-  - Domain layer restrictions (no external dependencies)
-  - Application layer validation
-  - Infrastructure layer guidelines
-
-#### 0.3.2 Prettier Configuration
+#### 0.7.2 Prettier Configuration
 **Detailed Tasks:**
+- [ ] **Install Prettier**
+  ```bash
+  pnpm add -D prettier
+  ```
+
 - [ ] **Create .prettierrc**
   ```json
   {
@@ -434,39 +336,15 @@ This improved architecture provides:
   }
   ```
 
-- [ ] **VSCode Settings**
-  ```json
-  {
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": true
-    }
-  }
-  ```
+### 0.8 Docker Base Configuration
+**Duration: 1 day | Priority: Critical**
 
-### 0.4 Docker & LocalStack Setup
-**Duration: 2 days | Priority: Critical**
-
-#### 0.4.1 Docker Compose Configuration
+#### 0.8.1 PostgreSQL Databases Setup
 **Detailed Tasks:**
-- [ ] **Create docker-compose.yml**
+- [ ] **Create docker-compose.yml (Databases)**
   ```yaml
   version: '3.8'
   services:
-    # LocalStack for AWS services
-    localstack:
-      container_name: edtech-localstack
-      image: localstack/localstack:latest
-      ports:
-        - "4566:4566"
-      environment:
-        - SERVICES=dynamodb,s3,lambda,eventbridge,cognito-idp,opensearch,rds
-        - DEBUG=1
-        - DATA_DIR=/tmp/localstack/data
-      volumes:
-        - "./localstack-data:/tmp/localstack"
-        - "/var/run/docker.sock:/var/run/docker.sock"
-
     # PostgreSQL for User Service
     postgres-user:
       container_name: edtech-postgres-user
@@ -479,6 +357,11 @@ This improved architecture provides:
         - "5432:5432"
       volumes:
         - postgres-user-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U user_service"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
     # PostgreSQL for Payment Service
     postgres-payment:
@@ -492,6 +375,11 @@ This improved architecture provides:
         - "5433:5432"
       volumes:
         - postgres-payment-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U payment_service"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
     # PostgreSQL for Reviews Service
     postgres-reviews:
@@ -505,6 +393,11 @@ This improved architecture provides:
         - "5434:5432"
       volumes:
         - postgres-reviews-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U reviews_service"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
     # PostgreSQL for Learning Service
     postgres-learning:
@@ -518,7 +411,28 @@ This improved architecture provides:
         - "5435:5432"
       volumes:
         - postgres-learning-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U learning_service"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
+  volumes:
+    postgres-user-data:
+    postgres-payment-data:
+    postgres-reviews-data:
+    postgres-learning-data:
+  ```
+
+### 0.9 NoSQL & Specialized Databases
+**Duration: 1 day | Priority: Critical**
+
+#### 0.9.1 Add NoSQL Databases to Docker Compose
+**Detailed Tasks:**
+- [ ] **Extend docker-compose.yml (NoSQL)**
+  ```yaml
+  # Add to existing docker-compose.yml services:
+  
     # Redis for Communication Service and Caching
     redis:
       container_name: edtech-redis
@@ -528,6 +442,11 @@ This improved architecture provides:
       volumes:
         - redis-data:/data
       command: redis-server --appendonly yes
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
     # Neo4j for Tutor Matching Service
     neo4j:
@@ -541,230 +460,168 @@ This improved architecture provides:
         - "7687:7687"
       volumes:
         - neo4j-data:/data
+      healthcheck:
+        test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "tutormatching", "RETURN 1"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
 
+  # Add to volumes:
   volumes:
-    postgres-user-data:
-    postgres-payment-data:
-    postgres-reviews-data:
-    postgres-learning-data:
     redis-data:
     neo4j-data:
   ```
 
-#### 0.4.2 Service Dockerfiles
+### 0.10 LocalStack & AWS Services
+**Duration: 1 day | Priority: Critical**
+
+#### 0.10.1 LocalStack Configuration
 **Detailed Tasks:**
-- [ ] **Base Dockerfile Template**
-  ```dockerfile
-  FROM node:18-alpine
+- [ ] **Add LocalStack to Docker Compose**
+  ```yaml
+  # Add to existing docker-compose.yml services:
   
-  # Install pnpm globally
-  RUN npm install -g pnpm
-  
-  WORKDIR /app
-  
-  # Copy package files
-  COPY package.json pnpm-lock.yaml ./
-  COPY pnpm-workspace.yaml ./
-  COPY tsconfig*.json ./
-  
-  # Install dependencies
-  RUN pnpm install --frozen-lockfile --prod
-  
-  # Copy source code
-  COPY src/ ./src/
-  
-  # Build application
-  RUN pnpm build
-  
-  # Expose port
-  EXPOSE 3000
-  
-  # Health check
-  HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
-  
-  # Start application
-  CMD ["pnpm", "start:prod"]
+    # LocalStack for AWS services
+    localstack:
+      container_name: edtech-localstack
+      image: localstack/localstack:latest
+      ports:
+        - "4566:4566"
+      environment:
+        - SERVICES=dynamodb,s3,lambda,eventbridge,cognito-idp,opensearch,rds
+        - DEBUG=1
+        - DATA_DIR=/tmp/localstack/data
+        - LAMBDA_EXECUTOR=docker
+        - DOCKER_HOST=unix:///var/run/docker.sock
+      volumes:
+        - "./localstack-data:/tmp/localstack"
+        - "/var/run/docker.sock:/var/run/docker.sock"
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
   ```
 
-- [ ] **Service-Specific Dockerfiles**
-  - Customize for each microservice
-  - Include service-specific dependencies
-  - Configure environment variables
-
-#### 0.4.3 LocalStack Configuration
+#### 0.10.2 LocalStack Initialization Script
 **Detailed Tasks:**
-- [ ] **LocalStack Initialization Script**
+- [ ] **Create LocalStack Init Script**
   ```bash
   #!/bin/bash
   # scripts/init-localstack.sh
   
-  echo "Waiting for LocalStack to be ready..."
+  echo "🚀 Waiting for LocalStack to be ready..."
   while ! curl -s http://localhost:4566/_localstack/health > /dev/null; do
-    sleep 2
+    echo "   ⏳ LocalStack not ready yet, waiting..."
+    sleep 3
   done
   
-  echo "Creating DynamoDB tables..."
-  aws --endpoint-url=http://localhost:4566 dynamodb create-table \
-    --table-name Courses \
-    --attribute-definitions AttributeName=courseId,AttributeType=S \
-    --key-schema AttributeName=courseId,KeyType=HASH \
+  echo "✅ LocalStack is ready! Initializing AWS resources..."
+  
+  # Set AWS CLI to use LocalStack
+  export AWS_ACCESS_KEY_ID=test
+  export AWS_SECRET_ACCESS_KEY=test
+  export AWS_DEFAULT_REGION=us-east-1
+  export AWS_ENDPOINT_URL=http://localhost:4566
+  
+  # Create DynamoDB tables
+  echo "📊 Creating DynamoDB tables..."
+  
+  # Communication Service - Messages table
+  aws dynamodb create-table \
+    --endpoint-url=http://localhost:4566 \
+    --table-name Messages \
+    --attribute-definitions \
+      AttributeName=conversationId,AttributeType=S \
+      AttributeName=timestamp,AttributeType=N \
+    --key-schema \
+      AttributeName=conversationId,KeyType=HASH \
+      AttributeName=timestamp,KeyType=RANGE \
     --billing-mode PAY_PER_REQUEST
   
-  # Additional table creation scripts...
+  # Content Service - Files metadata table
+  aws dynamodb create-table \
+    --endpoint-url=http://localhost:4566 \
+    --table-name FileMetadata \
+    --attribute-definitions AttributeName=fileId,AttributeType=S \
+    --key-schema AttributeName=fileId,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST
   
-  echo "LocalStack initialization complete!"
-  ```
-
-- [ ] **AWS CLI Configuration**
-  ```bash
-  # ~/.aws/config
-  [profile localstack]
-  region = us-east-1
-  output = json
-  endpoint_url = http://localhost:4566
-  ```
-
-### 0.5 Database Migration & Seeding Infrastructure
-**Duration: 2 days | Priority: Critical**
-
-#### 0.5.1 PostgreSQL Migration Setup
-**Detailed Tasks:**
-- [ ] **TypeORM Configuration per Service**
-  ```typescript
-  // apps/user-service/src/database/ormconfig.ts
-  import { DataSource } from 'typeorm';
+  # Create S3 buckets
+  echo "🪣 Creating S3 buckets..."
+  aws s3 mb s3://edtech-content-dev --endpoint-url=http://localhost:4566
+  aws s3 mb s3://edtech-uploads-dev --endpoint-url=http://localhost:4566
   
-  export const UserServiceDataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
-    username: process.env.POSTGRES_USER || 'user_service',
-    password: process.env.POSTGRES_PASSWORD || 'user_password',
-    database: process.env.POSTGRES_DB || 'user_service',
-    entities: ['src/domain/entities/*.entity.ts'],
-    migrations: ['src/migrations/*.ts'],
-    synchronize: false,
-    logging: process.env.NODE_ENV === 'development',
-  });
+  echo "✅ LocalStack initialization complete!"
   ```
 
-- [ ] **Migration Scripts Structure**
-  ```bash
-  apps/user-service/src/migrations/
-  ├── 001-create-users-table.ts
-  ├── 002-create-roles-table.ts
-  ├── 003-create-user-roles-table.ts
-  └── seeds/
-      ├── admin-user.seed.ts
-      ├── default-roles.seed.ts
-      └── test-users.seed.ts
-  ```
-
-#### 0.5.2 DynamoDB Schema Management
-**Detailed Tasks:**
-- [ ] **CDK Table Definitions**
-  ```typescript
-  // cdk/lib/constructs/dynamodb-table.construct.ts
-  import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
-  
-  export class DynamoDbTableConstruct extends Construct {
-    public readonly table: Table;
-  
-    constructor(scope: Construct, id: string, props: DynamoDbTableProps) {
-      super(scope, id);
-  
-      this.table = new Table(this, 'Table', {
-        tableName: props.tableName,
-        partitionKey: { name: props.partitionKey, type: AttributeType.STRING },
-        sortKey: props.sortKey ? { name: props.sortKey, type: AttributeType.STRING } : undefined,
-        billingMode: BillingMode.PAY_PER_REQUEST,
-        pointInTimeRecovery: true,
-        removalPolicy: RemovalPolicy.DESTROY, // For development
-      });
-    }
-  }
-  ```
-
-- [ ] **Schema Versioning Strategy**
-  - Document structure versioning
-  - Data migration Lambda functions
-  - Backward compatibility patterns
-
-#### 0.5.3 Neo4j Migration System
-**Detailed Tasks:**
-- [ ] **Cypher Migration Framework**
-  ```typescript
-  // apps/tutor-matching-service/src/database/neo4j-migrator.ts
-  export class Neo4jMigrator {
-    async runMigrations(): Promise<void> {
-      const migrationFiles = await this.getMigrationFiles();
-      
-      for (const file of migrationFiles) {
-        if (!await this.isMigrationExecuted(file)) {
-          await this.executeMigration(file);
-          await this.recordMigration(file);
-        }
-      }
-    }
-  }
-  ```
-
-- [ ] **Migration Scripts Structure**
-  ```cypher
-  // apps/tutor-matching-service/migrations/001-create-constraints.cypher
-  CREATE CONSTRAINT tutor_id_unique IF NOT EXISTS
-  FOR (t:Tutor) REQUIRE t.tutorId IS UNIQUE;
-  
-  CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
-  FOR (s:Skill) REQUIRE s.name IS UNIQUE;
-  ```
-
-### 0.6 Development Scripts & Automation
+### 0.11 Development Automation Scripts
 **Duration: 1 day | Priority: High**
 
-#### 0.6.1 Development Environment Scripts
+#### 0.11.1 Development Setup Scripts
 **Detailed Tasks:**
-- [ ] **Master Setup Script**
+- [ ] **Create Master Setup Script**
   ```bash
   #!/bin/bash
   # scripts/dev-setup.sh
   
+  set -e  # Exit on any error
+  
   echo "🚀 Setting up EdTech Platform development environment..."
   
+  # Check prerequisites
+  echo "🔍 Checking prerequisites..."
+  if ! command -v node &> /dev/null; then
+    echo "❌ Node.js not found. Please install Node.js 18+"
+    exit 1
+  fi
+  
+  if ! command -v pnpm &> /dev/null; then
+    echo "📦 Installing pnpm..."
+    npm install -g pnpm
+  fi
+  
+  if ! command -v docker &> /dev/null; then
+    echo "❌ Docker not found. Please install Docker"
+    exit 1
+  fi
+  
   # Install dependencies
-  echo "Installing dependencies..."
+  echo "📦 Installing dependencies..."
   pnpm install
   
-  # Start databases
-  echo "Starting database containers..."
-  docker-compose up -d postgres-user postgres-payment postgres-reviews neo4j
+  # Start databases first
+  echo "🗄️ Starting database containers..."
+  docker-compose up -d postgres-user postgres-payment postgres-reviews postgres-learning redis neo4j
   
   # Wait for databases
-  echo "Waiting for databases to be ready..."
+  echo "⏳ Waiting for databases to be ready..."
   ./scripts/wait-for-databases.sh
   
-  # Initialize LocalStack
-  echo "Starting LocalStack..."
+  # Start LocalStack
+  echo "☁️ Starting LocalStack..."
   docker-compose up -d localstack
+  
+  # Initialize LocalStack
+  echo "🔧 Initializing LocalStack resources..."
   ./scripts/init-localstack.sh
   
-  # Run migrations
-  echo "Running database migrations..."
-  pnpm migrate:all
-  
-  # Seed databases
-  echo "Seeding databases..."
-  pnpm seed:all
+  # Build shared libraries
+  echo "🏗️ Building shared libraries..."
+  pnpm build:libs
   
   echo "✅ Development environment ready!"
+  echo ""
   echo "📝 Next steps:"
-  echo "  - Run 'pnpm dev' to start all services"
-  echo "  - Visit http://localhost:4566 for LocalStack"
-  echo "  - Visit http://localhost:7474 for Neo4j Browser"
+  echo "  - Run 'pnpm start:dev' to start services in development mode"
+  echo "  - Visit http://localhost:4566 for LocalStack dashboard"
+  echo "  - Visit http://localhost:7474 for Neo4j Browser (user: neo4j, pass: tutormatching)"
+  echo "  - Check database connections with 'pnpm test:db'"
   ```
 
-- [ ] **Database Wait Script**
+#### 0.11.2 Database Utilities
+**Detailed Tasks:**
+- [ ] **Create Database Wait Script**
   ```bash
   #!/bin/bash
   # scripts/wait-for-databases.sh
@@ -772,89 +629,121 @@ This improved architecture provides:
   wait_for_postgres() {
     local port=$1
     local service=$2
+    local max_attempts=30
+    local attempt=1
     
-    echo "Waiting for PostgreSQL ($service) on port $port..."
+    echo "   🔄 Waiting for PostgreSQL ($service) on port $port..."
     while ! nc -z localhost $port; do
-      sleep 1
+      if [ $attempt -eq $max_attempts ]; then
+        echo "   ❌ PostgreSQL ($service) failed to start after $max_attempts attempts"
+        exit 1
+      fi
+      echo "   ⏳ Attempt $attempt/$max_attempts - PostgreSQL ($service) not ready..."
+      sleep 2
+      ((attempt++))
     done
-    echo "PostgreSQL ($service) is ready!"
+    echo "   ✅ PostgreSQL ($service) is ready!"
   }
   
+  wait_for_service() {
+    local host=$1
+    local port=$2
+    local service=$3
+    local max_attempts=30
+    local attempt=1
+    
+    echo "   🔄 Waiting for $service on $host:$port..."
+    while ! nc -z $host $port; do
+      if [ $attempt -eq $max_attempts ]; then
+        echo "   ❌ $service failed to start after $max_attempts attempts"
+        exit 1
+      fi
+      echo "   ⏳ Attempt $attempt/$max_attempts - $service not ready..."
+      sleep 2
+      ((attempt++))
+    done
+    echo "   ✅ $service is ready!"
+  }
+  
+  # Wait for all PostgreSQL instances
   wait_for_postgres 5432 "user-service"
   wait_for_postgres 5433 "payment-service"
   wait_for_postgres 5434 "reviews-service"
   wait_for_postgres 5435 "learning-service"
   
-  echo "Waiting for Neo4j..."
-  while ! nc -z localhost 7687; do
-    sleep 1
-  done
-  echo "Neo4j is ready!"
+  # Wait for Redis
+  wait_for_service localhost 6379 "Redis"
+  
+  # Wait for Neo4j
+  wait_for_service localhost 7687 "Neo4j"
+  
+  echo "🎉 All databases are ready!"
   ```
 
-#### 0.6.2 Migration Runner Scripts
-**Detailed Tasks:**
-- [ ] **Service-Specific Migration Runners**
-  ```bash
-  # apps/user-service/scripts/migrate.sh
-  #!/bin/bash
-  
-  echo "Running User Service migrations..."
-  pnpm typeorm migration:run -- -d src/database/ormconfig.ts
-  
-  if [ "$1" = "--seed" ]; then
-    echo "Running User Service seeds..."
-    pnpm seed:run
-  fi
-  ```
-
-- [ ] **Master Migration Script**
-  ```bash
-  #!/bin/bash
-  # scripts/migrate-all.sh
-  
-  services=("user-service" "payment-service" "reviews-service" "tutor-matching-service")
-  
-  for service in "${services[@]}"; do
-    echo "Migrating $service..."
-    cd "apps/$service" && npm run migrate
-    cd "../.."
-  done
-  
-  echo "Creating DynamoDB tables..."
-  npm run cdk:deploy --local
-  ```
-
-### 0.7 Environment Configuration
+### 0.12 Environment Configuration & Final Setup
 **Duration: 1 day | Priority: High**
 
-#### 0.7.1 Environment Variables Setup
+#### 0.12.1 Environment Variables Configuration
 **Detailed Tasks:**
-- [ ] **Root .env.example**
+- [ ] **Create .env.example**
   ```bash
-  # Database Configuration
+  # ===========================================
+  # EdTech Platform Backend Environment Config
+  # ===========================================
+  
+  # Node.js Environment
+  NODE_ENV=development
+  LOG_LEVEL=debug
+  
+  # ===========================================
+  # Database Configuration - PostgreSQL
+  # ===========================================
+  
+  # User Service Database
   POSTGRES_USER_HOST=localhost
   POSTGRES_USER_PORT=5432
   POSTGRES_USER_DB=user_service
   POSTGRES_USER_USER=user_service
   POSTGRES_USER_PASSWORD=user_password
   
+  # Payment Service Database
   POSTGRES_PAYMENT_HOST=localhost
   POSTGRES_PAYMENT_PORT=5433
   POSTGRES_PAYMENT_DB=payment_service
   POSTGRES_PAYMENT_USER=payment_service
   POSTGRES_PAYMENT_PASSWORD=payment_password
   
+  # Reviews Service Database
   POSTGRES_REVIEWS_HOST=localhost
   POSTGRES_REVIEWS_PORT=5434
   POSTGRES_REVIEWS_DB=reviews_service
   POSTGRES_REVIEWS_USER=reviews_service
   POSTGRES_REVIEWS_PASSWORD=reviews_password
   
+  # Learning Service Database
+  POSTGRES_LEARNING_HOST=localhost
+  POSTGRES_LEARNING_PORT=5435
+  POSTGRES_LEARNING_DB=learning_service
+  POSTGRES_LEARNING_USER=learning_service
+  POSTGRES_LEARNING_PASSWORD=learning_password
+  
+  # ===========================================
+  # NoSQL Database Configuration
+  # ===========================================
+  
+  # Redis Configuration
+  REDIS_HOST=localhost
+  REDIS_PORT=6379
+  REDIS_PASSWORD=
+  
   # Neo4j Configuration
   NEO4J_URI=bolt://localhost:7687
   NEO4J_USER=neo4j
   NEO4J_PASSWORD=tutormatching
+  
+  # ===========================================
+  # AWS / LocalStack Configuration
+  # ===========================================
   
   # LocalStack Configuration
   LOCALSTACK_ENDPOINT=http://localhost:4566
@@ -862,148 +751,186 @@ This improved architecture provides:
   AWS_ACCESS_KEY_ID=test
   AWS_SECRET_ACCESS_KEY=test
   
-  # Social Authentication
+  # S3 Buckets
+  S3_BUCKET_CONTENT=edtech-content-dev
+  S3_BUCKET_UPLOADS=edtech-uploads-dev
+  
+  # DynamoDB Tables
+  DYNAMODB_MESSAGES_TABLE=Messages
+  DYNAMODB_FILES_TABLE=FileMetadata
+  DYNAMODB_NOTIFICATIONS_TABLE=Notifications
+  DYNAMODB_ANALYTICS_TABLE=Analytics
+  
+  # ===========================================
+  # Social Authentication (To be configured)
+  # ===========================================
+  
+  # Google OAuth
   GOOGLE_CLIENT_ID=your_google_client_id
   GOOGLE_CLIENT_SECRET=your_google_client_secret
+  
+  # Facebook OAuth
   FACEBOOK_APP_ID=your_facebook_app_id
   FACEBOOK_APP_SECRET=your_facebook_app_secret
+  
+  # Apple OAuth
   APPLE_CLIENT_ID=your_apple_client_id
   APPLE_PRIVATE_KEY_PATH=path_to_apple_private_key
   
+  # ===========================================
+  # Payment Configuration (To be configured)
+  # ===========================================
+  
   # Stripe Configuration
   STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+  STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
   STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
   
-  # Application Settings
-  NODE_ENV=development
-  LOG_LEVEL=debug
-  API_PORT=3000
+  # Platform Commission (20%)
+  PLATFORM_COMMISSION_RATE=0.20
+  
+  # ===========================================
+  # Service Ports
+  # ===========================================
+  
+  USER_SERVICE_PORT=3001
+  LEARNING_SERVICE_PORT=3002
+  TUTOR_MATCHING_SERVICE_PORT=3003
+  PAYMENT_SERVICE_PORT=3004
+  REVIEWS_SERVICE_PORT=3005
+  COMMUNICATION_SERVICE_PORT=3006
+  CONTENT_SERVICE_PORT=3007
+  NOTIFICATION_SERVICE_PORT=3008
+  ANALYTICS_SERVICE_PORT=3009
+  AI_SERVICE_PORT=3010
+  
+  # ===========================================
+  # Security Configuration
+  # ===========================================
+  
+  # JWT Configuration
+  JWT_SECRET=your_jwt_secret_here_min_32_characters
+  JWT_EXPIRES_IN=24h
+  JWT_REFRESH_SECRET=your_jwt_refresh_secret_here
+  JWT_REFRESH_EXPIRES_IN=7d
+  
+  # Encryption
+  ENCRYPTION_KEY=your_encryption_key_32_chars_min
+  
+  # ===========================================
+  # External Services (To be configured)
+  # ===========================================
+  
+  # Video Calling (Agora.io)
+  AGORA_APP_ID=your_agora_app_id
+  AGORA_APP_CERTIFICATE=your_agora_certificate
+  
+  # Email Service (SendGrid/SES)
+  EMAIL_PROVIDER=sendgrid
+  SENDGRID_API_KEY=your_sendgrid_api_key
+  EMAIL_FROM=noreply@edtech-platform.com
+  
+  # SMS Service (Twilio)
+  TWILIO_ACCOUNT_SID=your_twilio_account_sid
+  TWILIO_AUTH_TOKEN=your_twilio_auth_token
+  TWILIO_PHONE_NUMBER=your_twilio_phone_number
   ```
 
-- [ ] **Service-Specific Environment Files**
-  - Each service has its own .env.example
-  - Service-specific configurations
-  - Database connection strings
-  - External service credentials
-
-#### 0.7.2 Configuration Management
+#### 0.12.2 Final Validation & Testing
 **Detailed Tasks:**
-- [ ] **Configuration Validation**
-  ```typescript
-  // shared/config/config.validator.ts
-  import { IsString, IsNumber, IsOptional, validateOrReject } from 'class-validator';
+- [ ] **Create Validation Scripts**
+  ```bash
+  #!/bin/bash
+  # scripts/validate-setup.sh
   
-  export class DatabaseConfig {
-    @IsString()
-    host: string;
+  echo "🔍 Validating development environment setup..."
   
-    @IsNumber()
-    port: number;
+  # Test TypeScript compilation
+  echo "📝 Testing TypeScript compilation..."
+  if pnpm build:check; then
+    echo "   ✅ TypeScript compilation successful"
+  else
+    echo "   ❌ TypeScript compilation failed"
+    exit 1
+  fi
   
-    @IsString()
-    database: string;
+  # Test linting
+  echo "🧹 Testing ESLint..."
+  if pnpm lint:check; then
+    echo "   ✅ ESLint validation successful"
+  else
+    echo "   ❌ ESLint validation failed"
+    exit 1
+  fi
   
-    @IsString()
-    username: string;
+  # Test database connections
+  echo "🗄️ Testing database connections..."
+  if pnpm test:db-connections; then
+    echo "   ✅ Database connections successful"
+  else
+    echo "   ❌ Database connections failed"
+    exit 1
+  fi
   
-    @IsString()
-    password: string;
-  }
+  # Test LocalStack services
+  echo "☁️ Testing LocalStack services..."
+  if curl -s http://localhost:4566/_localstack/health | grep -q "running"; then
+    echo "   ✅ LocalStack services running"
+  else
+    echo "   ❌ LocalStack services not running"
+    exit 1
+  fi
   
-  export async function validateConfig<T>(config: T): Promise<T> {
-    await validateOrReject(config);
-    return config;
-  }
+  echo "🎉 All validations passed! Environment is ready for development."
   ```
 
-- [ ] **Configuration Loading**
-  ```typescript
-  // shared/config/config.loader.ts
-  import { config } from 'dotenv';
-  import { DatabaseConfig, validateConfig } from './config.validator';
-  
-  export class ConfigLoader {
-    static async loadDatabaseConfig(service: string): Promise<DatabaseConfig> {
-      config();
-      
-      const dbConfig = new DatabaseConfig();
-      dbConfig.host = process.env[`POSTGRES_${service.toUpperCase()}_HOST`] || 'localhost';
-      dbConfig.port = parseInt(process.env[`POSTGRES_${service.toUpperCase()}_PORT`] || '5432');
-      dbConfig.database = process.env[`POSTGRES_${service.toUpperCase()}_DB`] || service;
-      dbConfig.username = process.env[`POSTGRES_${service.toUpperCase()}_USER`] || service;
-      dbConfig.password = process.env[`POSTGRES_${service.toUpperCase()}_PASSWORD`] || 'password';
-      
-      return validateConfig(dbConfig);
-    }
-  }
-  ```
-
-## ✅ Success Criteria
+## ✅ Enhanced Success Criteria
 
 ### Technical Acceptance Criteria
-- [ ] Complete monorepo structure with all services scaffolded
-- [ ] Docker Compose environment starts all databases successfully
-- [ ] LocalStack initializes with all required AWS services
-- [ ] All database migrations run successfully
-- [ ] TypeScript compilation works across all services
-- [ ] ESLint and Prettier run without errors
-- [ ] Git hooks are functional and enforce code quality
-- [ ] Environment configuration is validated and loaded correctly
-
-### Documentation Deliverables
-- [ ] README.md with setup instructions
-- [ ] CONTRIBUTING.md with development guidelines
-- [ ] API documentation structure in place
-- [ ] Architecture decision records (ADRs) template
-- [ ] Database schema documentation structure
+- [ ] **Project Structure**: Complete NestJS monorepo with all 10 microservices
+- [ ] **Shared Libraries**: All 10 shared libraries created and properly configured
+- [ ] **Databases**: All PostgreSQL, Redis, and Neo4j containers running with health checks
+- [ ] **LocalStack**: AWS services (DynamoDB, S3, EventBridge) properly initialized
+- [ ] **Build System**: TypeScript compilation works across all services
+- [ ] **Code Quality**: ESLint and Prettier configured with no errors
+- [ ] **Environment**: All environment variables properly configured and validated
+- [ ] **Scripts**: Development automation scripts working correctly
+- [ ] **Git**: Repository initialized with proper .gitignore and workspace configuration
+- [ ] **Documentation**: Basic README with setup instructions
 
 ### Operational Readiness
-- [ ] Development environment can be set up with single command
-- [ ] Database reset and reseed capabilities work
-- [ ] Service health checks are implemented
-- [ ] Logging framework is configured across all services
-- [ ] Error handling patterns are established
+- [ ] **Single Command Setup**: `pnpm dev:setup` completes successfully
+- [ ] **Health Checks**: All database and service health checks pass
+- [ ] **Fast Development**: Hot reload working for all services
+- [ ] **Database Reset**: Can reset and reseed all databases
+- [ ] **Service Communication**: Basic inter-service communication established
+- [ ] **Error Handling**: Proper error handling and logging in place
 
-## 🚨 Risk Mitigation
+### Performance Benchmarks
+- [ ] **Setup Time**: Complete environment setup < 5 minutes
+- [ ] **Build Time**: Full TypeScript build < 2 minutes
+- [ ] **Container Startup**: All containers start < 60 seconds
+- [ ] **Hot Reload**: Code changes reflect < 3 seconds
 
-### Technical Risks
-- **Docker Resource Usage**: Monitor memory and CPU usage during development
-- **Database Port Conflicts**: Use different ports for each PostgreSQL instance
-- **LocalStack Limitations**: Identify AWS service limitations early
-- **Migration Complexity**: Start with simple migrations, build complexity gradually
+## 📅 Enhanced Phase Timeline
 
-### Development Risks
-- **Environment Setup Complexity**: Automate everything, document edge cases
-- **Configuration Management**: Validate all configurations, provide clear error messages
-- **Developer Onboarding**: Create comprehensive setup guides and troubleshooting docs
+| Subphase | Duration | Priority | Deliverables |
+|----------|----------|----------|--------------|
+| 0.1 Prerequisites & Basic Setup | 1 day | Critical | Dev environment, Git |
+| 0.2 NestJS Monorepo Initialization | 1 day | Critical | Base project structure |
+| 0.3 Shared Libraries Creation | 1 day | High | All shared libraries |
+| 0.4 Project Structure & Documentation | 1 day | High | Directory structure, Git config |
+| 0.5 Package Management Configuration | 1 day | Critical | Dependencies, scripts |
+| 0.6 TypeScript Configuration | 1 day | High | TS config, path mappings |
+| 0.7 Code Quality & Standards | 1 day | High | ESLint, Prettier |
+| 0.8 Docker Base Configuration | 1 day | Critical | PostgreSQL databases |
+| 0.9 NoSQL & Specialized Databases | 1 day | Critical | Redis, Neo4j |
+| 0.10 LocalStack & AWS Services | 1 day | Critical | LocalStack, AWS resources |
+| 0.11 Development Automation Scripts | 1 day | High | Setup, migration scripts |
+| 0.12 Environment Configuration & Final Setup | 1 day | High | Environment vars, validation |
 
-## 📊 Key Performance Indicators (KPIs)
-
-### Setup Efficiency
-- **Environment Setup Time**: < 10 minutes for complete setup
-- **Database Migration Time**: < 5 minutes for all services
-- **Build Time**: < 2 minutes for TypeScript compilation
-- **Test Execution Time**: < 30 seconds for lint/format checks
-
-### Development Experience
-- **Hot Reload Time**: < 3 seconds for code changes
-- **Database Reset Time**: < 1 minute for complete reset
-- **Container Startup Time**: < 30 seconds for all services
-
-## 📅 Phase Timeline
-
-| Subphase | Duration | Dependencies | Deliverables |
-|----------|----------|--------------|--------------|
-| 0.1 Project Structure | 1 day | - | Monorepo structure, Git setup |
-| 0.2 Package Management | 1 day | 0.1 | TypeScript config, dependencies |
-| 0.3 Code Quality | 1 day | 0.2 | ESLint, Prettier, Git hooks |
-| 0.4 Docker & LocalStack | 2 days | 0.3 | Container environment |
-| 0.5 Database Infrastructure | 2 days | 0.4 | Migration systems |
-| 0.6 Development Scripts | 1 day | 0.5 | Automation scripts |
-| 0.7 Environment Config | 1 day | 0.6 | Configuration management |
-
-**Total Duration**: 7 days  
-**Buffer**: +2 days for integration testing and documentation
+**Total Duration**: 12 days (2.4 weeks)  
+**Buffer**: +2 days for integration issues and documentation
 
 ---
 

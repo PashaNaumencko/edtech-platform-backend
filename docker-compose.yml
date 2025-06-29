@@ -1,0 +1,135 @@
+version: '3.8'
+services:
+  # PostgreSQL for User Service
+  postgres-user:
+    container_name: edtech-postgres-user
+    image: postgres:15
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: user_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL for Payment Service
+  postgres-payment:
+    container_name: edtech-postgres-payment
+    image: postgres:15
+    environment:
+      POSTGRES_DB: payment_service
+      POSTGRES_USER: payment_service
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-payment-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL for Reviews Service
+  postgres-reviews:
+    container_name: edtech-postgres-reviews
+    image: postgres:15
+    environment:
+      POSTGRES_DB: reviews_service
+      POSTGRES_USER: reviews_service
+      POSTGRES_PASSWORD: reviews_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-reviews-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reviews_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL for Learning Service
+  postgres-learning:
+    container_name: edtech-postgres-learning
+    image: postgres:15
+    environment:
+      POSTGRES_DB: learning_service
+      POSTGRES_USER: learning_service
+      POSTGRES_PASSWORD: learning_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-learning-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learning_service"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for Communication Service and Caching
+  redis:
+    container_name: edtech-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Neo4j for Tutor Matching Service
+  neo4j:
+    container_name: edtech-neo4j
+    image: neo4j:5.11
+    environment:
+      NEO4J_AUTH: neo4j/tutormatching
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "tutormatching", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # LocalStack for AWS services
+  localstack:
+    container_name: edtech-localstack
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,s3,lambda,eventbridge,cognito-idp,opensearch,rds
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "./localstack-data:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres-user-data:
+  postgres-payment-data:
+  postgres-reviews-data:
+  postgres-learning-data:
+  redis-data:
+  neo4j-data: 
