@@ -13,6 +13,8 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 - ✅ **Expanded Infrastructure**: Complete infrastructure component mapping per service
 - ✅ **Use Case Pattern**: Consistent implementation across all services
 - ✅ **Domain Events**: Proper event handling and side effects management
+- ✅ **Admin Security Model**: Superadmin-only admin creation (no promotion mechanism)
+- ✅ **Service Boundaries**: Clear User Service vs Tutor Matching Service responsibilities
 
 ## Architecture Summary
 
@@ -30,6 +32,33 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 - ✅ **NestJS CQRS Integration** - AggregateRoot, events, and sagas
 - ✅ **Expanded Infrastructure** - Specific components per service type
 - ✅ **Standardized Folder Structure** - Complete microservice organization
+- ✅ **Superadmin Security Model** - Admin creation restricted to superadmin operations only
+- ✅ **Hybrid Service Architecture** - Keep user logic in User Service initially, extract tutor-specific logic later
+
+### Updated Admin Security Model
+
+**Admin Creation Policy**:
+- ✅ **Superadmin-Only**: Only platform superadmin can create admin accounts
+- ❌ **No Promotions**: Admin role cannot be obtained through normal role transitions
+- ✅ **System Operations**: Admin creation bypasses normal business rules
+- ✅ **Audit Trail**: All admin operations fully logged and traceable
+
+**Security Benefits**:
+- **Centralized Control**: Single point of admin access management
+- **Attack Prevention**: Eliminates promotion-based security vulnerabilities
+- **Compliance**: Clear audit trail for all administrative appointments
+
+### Service Boundary Strategy
+
+**Phase 1 Approach** (Current):
+- ✅ **User Service**: Handles ALL user-related logic (including tutor-specific business rules)
+- ✅ **Simplified Development**: Single service reduces initial complexity
+- ✅ **Solid Foundation**: Comprehensive domain layer with proper patterns
+
+**Future Migration** (Phase 2+):
+- 🔄 **Tutor Matching Service**: Extract tutor-specific domain logic
+- 🎯 **Better Separation**: Specialized tutoring business operations
+- 📈 **Independent Scaling**: Dedicated tutor service optimization
 
 ### Implementation Phases
 
@@ -46,52 +75,55 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 
 ## Phase 1: GraphQL Federation Foundation & User Service
 
-**Duration: 20 days | Status: READY TO START**
+**Duration: 20 days | Status: IN PROGRESS (Days 1-7 ✅ COMPLETED)**
 
-### 1.1 GraphQL Federation Setup (4 days)
+### 1.1 GraphQL Federation Setup (4 days) ✅ COMPLETED
 
-- **GraphQL Composition Tooling**
+- ✅ **GraphQL Composition Tooling**
   - Set up Apollo Federation composition
   - Create schema composition pipeline
   - Implement subgraph validation
   - Set up schema registry for schema evolution
-- **AppSync Infrastructure (CDK)**
+- ✅ **AppSync Infrastructure (CDK)**
   - Create AppSync GraphQL API stack
   - Configure Cognito authentication
   - Set up basic resolvers infrastructure
   - Implement error handling patterns
 
-### 1.2 User Service Complete Implementation (12 days)
+### 1.2 User Service Complete Implementation (12 days) - **IN PROGRESS**
 
-- **Basic Domain Layer Implementation** (2 days) ✅ COMPLETED
+- ✅ **Basic Domain Layer Implementation** (2 days) **COMPLETED**
   - User entity (AggregateRoot) with NestJS CQRS integration
   - Core value objects: Email, UserId, UserName, UserRole
   - Basic domain events: Created, Updated, Activated, Deactivated
   - Repository interfaces and UserFactory
-- **Enhanced Domain Layer Implementation** (4 days) _(NEW - Phase 0.5 Integration)_
-  - Domain Services: UserDomainService with complex business logic
-  - Business Rules: Centralized UserBusinessRules and policies
-  - Specifications Pattern: Composable query logic and business rules
-  - Enhanced Value Objects: UserPreferences, UserProfile
-  - Advanced Domain Events: Role changes, profile updates, security events
-  - Domain-specific error handling with meaningful error types
-- **Application Layer Implementation** (2 days)
+
+- ✅ **Enhanced Domain Layer Implementation** (4 days) **DAY 7 COMPLETED**
+  - ✅ Domain Services: UserDomainService with complex business logic
+  - ✅ Business Rules: Centralized UserBusinessRules (superadmin-only admin creation)
+  - ✅ Domain Errors: SuperadminOnlyOperationError and comprehensive error hierarchy
+  - ✅ Professional Logging: NestJS Logger integration throughout domain services
+  - **NEXT**: Specifications Pattern, Enhanced Value Objects, Advanced Domain Events
+
+- **Application Layer Implementation** (2 days) - **UPCOMING**
   - Use cases leveraging enhanced domain services and business rules
   - Event handlers for side effects with domain service integration
   - Enhanced DTOs utilizing rich value objects
-- **Infrastructure Layer Implementation** (3 days)
+
+- **Infrastructure Layer Implementation** (3 days) - **UPCOMING**
   - PostgreSQL: Enhanced entities supporting specifications pattern
   - Redis: Caching with enhanced domain models
   - Cognito: Authentication services and guards
   - S3: Profile image uploads with domain validation
   - Email: Enhanced email templates with business rules
   - EventBridge: Publishing enhanced domain events
-- **Presentation Layer Implementation** (1 day)
+
+- **Presentation Layer Implementation** (1 day) - **UPCOMING**
   - Internal HTTP controllers with enhanced validation
   - GraphQL subgraph schema reflecting enhanced domain
   - Health check endpoints with enhanced diagnostics
 
-### 1.3 GraphQL Resolvers & Testing (4 days)
+### 1.3 GraphQL Resolvers & Testing (4 days) - **UPCOMING**
 
 - **Lambda Resolvers Implementation** (2 days)
   - Enhanced User query/mutation resolvers using domain services
@@ -206,16 +238,20 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 
 **Duration: 14 days**
 
+**⚠️ Service Boundary Note**: This service will initially receive tutor-specific domain logic extracted from User Service. See [Service Boundary Analysis](../docs/architecture-decisions/service-boundary-analysis.md) for detailed migration strategy.
+
 ### 5.1 Tutor Matching Service Implementation (10 days)
 
 - **Domain Layer** (2 days)
-  - TutorProfile, Availability, Skill entities
+  - TutorProfile, Availability, Skill entities _(extracted from User Service)_
   - Rating, Schedule value objects
+  - Tutor-specific business rules _(migrated from UserBusinessRules)_
   - Matching algorithm domain logic
 - **Application Layer** (3 days)
   - Use cases: FindTutors, CalculateCompatibility, UpdateAvailability
   - Recommendation engine use cases
   - Matching algorithm implementation
+  - Integration with User Service for basic user operations
 - **Infrastructure Layer** (4 days)
   - PostgreSQL: tutor profiles, availability
   - Neo4j: skill relationships and graph matching
@@ -224,7 +260,7 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
   - EventBridge: matching event publishing
 - **Presentation Layer** (1 day)
   - Internal APIs: `/internal/tutors/*`, `/internal/matching/*`
-  - GraphQL subgraph with federation
+  - GraphQL subgraph with federation to User Service
 
 ### 5.2 Recommendation Engine & ML Integration (4 days)
 
@@ -403,6 +439,10 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
   - JWT token validation hardening
   - Network security and VPC isolation
   - Secrets management with AWS Secrets Manager
+- **Admin Security Audit** (included)
+  - Verify superadmin-only admin creation
+  - Audit admin operation logging
+  - Test unauthorized access prevention
 
 ### 11.2 Compliance Implementation (3 days)
 
@@ -411,7 +451,7 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
   - Data encryption at rest and in transit
   - Privacy controls and data anonymization
 - **Audit & Monitoring** (1 day)
-  - Comprehensive audit logging
+  - Comprehensive audit logging (including admin operations)
   - Security monitoring and alerting
 
 ## Phase 12: Testing & Quality Assurance
@@ -421,16 +461,19 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 ### 12.1 Comprehensive Testing Infrastructure (8 days)
 
 - **Unit Testing** (3 days)
-  - Domain layer tests for all services
+  - Domain layer tests for all services (including enhanced domain features)
   - Use case testing with mocked dependencies
   - Value object and entity validation tests
+  - Admin security model testing
 - **Integration Testing** (3 days)
   - Database integration tests
   - External service integration tests
   - GraphQL federation integration tests
+  - Service boundary integration tests
 - **End-to-End Testing** (2 days)
   - Full user journey testing
   - Cross-service workflow testing
+  - Admin operation security testing
 
 ### 12.2 Performance & Load Testing (4 days)
 
@@ -456,7 +499,7 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
   - Database read replicas and failover
 - **Monitoring & Alerting** (2 days)
   - CloudWatch dashboards for all services
-  - Comprehensive alerting setup
+  - Comprehensive alerting setup (including admin operation monitoring)
   - Log aggregation and analysis
 
 ### 13.2 Go-Live Preparation (4 days)
@@ -466,10 +509,11 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
   - Cache optimization
   - Database query optimization
 - **Launch Checklist** (2 days)
-  - Security audit and penetration testing
+  - Security audit and penetration testing (including admin security)
   - Backup and recovery testing
   - Support procedures and runbooks
   - Final data migration and go-live
+  - Superadmin account setup and verification
 
 ## Updated Timeline: ~144 days (29 weeks / 7 months)
 
@@ -477,185 +521,33 @@ This implementation plan reflects our **GraphQL Federation** architecture with A
 
 - **Phase 1 Extended:** +4 days (16 → 20 days) for enhanced domain layer integration
 - **Total Project:** +4 days (140 → 144 days)
-- **Rationale:** Enhanced domain foundation accelerates subsequent phases with better patterns
+- **Rationale:** Enhanced domain foundation with secure admin model accelerates subsequent phases
+
+**Latest Updates:**
+- ✅ **Admin Security Model**: Superadmin-only admin creation implemented
+- ✅ **Service Boundaries**: User Service keeps all logic initially for faster development
+- ✅ **Enhanced Domain**: Day 7 completed with domain services, business rules, and comprehensive error handling
+- ✅ **Documentation**: Business processes and architecture decisions documented
 
 ## Service Dependencies & Implementation Order
 
 ```mermaid
 graph TD
-    P0[Phase 0: Foundation] --> P1[Phase 1: User Service + Enhanced Domain - 20 days]
+    P0[Phase 0: Foundation] --> P1[Phase 1: User Service + Enhanced Domain + Admin Security - 20 days]
     P1 --> P2[Phase 2: Learning Service]
     P1 --> P3[Phase 3: Content Service]
     P2 --> P4[Phase 4: Payment Service]
-    P2 --> P5[Phase 5: Tutor Matching]
+    P2 --> P5[Phase 5: Tutor Matching with Service Migration]
     P1 --> P6[Phase 6: Communication]
     P5 --> P7[Phase 7: Reviews Service]
     P1 --> P8[Phase 8: Notification Service]
     P2 --> P9[Phase 9: Analytics Service]
     P9 --> P10[Phase 10: AI Service]
-    P10 --> P11[Phase 11: Security & Compliance]
-    P11 --> P12[Phase 12: Testing & QA]
-    P12 --> P13[Phase 13: Production Deployment]
+    P10 --> P11[Phase 11: Security & Compliance + Admin Audit]
+    P11 --> P12[Phase 12: Testing & QA + Service Boundary Testing]
+    P12 --> P13[Phase 13: Production Deployment + Superadmin Setup]
 ```
 
-## Key Milestones
-
-### Milestone 1: Core Platform (End of Phase 5)
-
-- User management and authentication ✅
-- Course creation and management ✅
-- Content management and CDN ✅
-- Payment processing ✅
-- Tutor matching and discovery ✅
-- Basic GraphQL federation working ✅
-
-### Milestone 2: Complete Platform (End of Phase 10)
-
-- Real-time communication ✅
-- Review and rating system ✅
-- Notification system ✅
-- Analytics and reporting ✅
-- AI-powered features ✅
-
-### Milestone 3: Production Ready (End of Phase 13)
-
-- Security hardening ✅
-- Full testing coverage ✅
-- Production deployment ✅
-- Monitoring and alerting ✅
-
-## Success Criteria
-
-### Technical Criteria
-
-- All 10 microservices implementing standardized folder structure
-- All GraphQL subgraphs compose successfully
-- < 200ms response time for 95% of GraphQL queries
-- 99.9% uptime for all services
-- Zero critical security vulnerabilities
-- Complete use case pattern implementation across all services
-
-### Business Criteria
-
-- Support 10,000+ concurrent users
-- Handle 1M+ GraphQL operations per day
-- < 1 second time-to-interactive for frontend
-- Comprehensive audit and compliance logging
-- Full feature parity with major EdTech platforms
-
-## Risk Mitigation
-
-### Technical Risks
-
-- **Complex Infrastructure**: Phased approach with infrastructure validation at each step
-- **GraphQL Federation Complexity**: Start with simple subgraphs, add complexity gradually
-- **Service Dependencies**: Clear dependency mapping and sequential implementation
-- **Database Performance**: Implement caching and read replicas early
-
-### Business Risks
-
-- **Extended Timeline**: Realistic estimates with buffer time built into each phase
-- **Resource Constraints**: Modular approach allows for team scaling
-- **Integration Issues**: Continuous integration and testing at each phase
-
-## 📚 Supporting Documentation
-
-### Strategies & Architecture
-
-- [**Microservices Folder Structure Reference**](reference/microservices-folder-structure.md)
-  - Complete standardized folder structure for all microservices with DDD + Clean Architecture + Use Case pattern
-
-- [**Architectural Patterns & Implementation Guide**](reference/architecture-overview.md)
-  - GraphQL Federation patterns, communication flows, security model, and deployment architecture
-
-- [**Database Migration & Seeding Strategy**](strategies/database-migration-strategy.md)
-  - Comprehensive migration approach for all database types
-
-- [**Microservices Database Strategy**](strategies/microservices-database-strategy.md)
-  - Database allocation per service, technology decisions
-
-- [**LocalStack Development Strategy**](strategies/localstack-development-strategy.md)
-  - Cost-effective local development approach
-
-- [**API Design Strategy**](strategies/api-design-strategy.md)
-  - GraphQL and REST API architectural decisions
-
-### Reference & Planning
-
-- [**Implementation Priorities**](reference/implementation-priorities.md)
-  - MVP vs V1.1 vs V2.0 feature categorization
-
-- [**Risk Mitigation Plan**](reference/risk-mitigation.md)
-  - Technical and business risk identification and mitigation
-
-- [**Success Metrics & KPIs**](reference/success-metrics.md)
-  - Technical and business metrics for measuring success
-
-- [**Technology Stack Reference**](reference/technology-stack.md)
-  - Detailed technology choices and justifications
-
-- [**Preply Platform Analysis & Insights**](reference/preply-analysis-and-insights.md)
-  - Comprehensive analysis of Preply's successful EdTech platform approach with actionable insights for our implementation
-
-- [**Admin Panel Implementation Strategy**](reference/admin-panel-implementation-strategy.md)
-  - Critical business case for admin panel in MVP, operational workflows, and quality assurance strategy
-
-## 🚀 Getting Started
-
-1. **Review Architecture** - Start with [Microservices Folder Structure](reference/microservices-folder-structure.md)
-2. **Review GraphQL Federation** - Continue with [Architecture Overview](reference/architecture-overview.md)
-3. **Understand Database Strategy** - Read [Database Migration Strategy](strategies/database-migration-strategy.md)
-4. **Set Up Development Environment** - Follow the Docker and LocalStack setup guides
-5. **Begin Phase 1** - Start with [GraphQL Federation Foundation](phases/phase-1-graphql-federation.md)
-
-## 📈 Implementation Strategy for Solo Developer
-
-This plan is specifically optimized for **sequential development** with proper **service dependencies** and a **LocalStack-first approach** to minimize AWS costs during development. Each phase builds upon the previous one, ensuring a working system at each milestone.
-
-**Key Changes in This Revision:**
-
-- ✅ **All 10 microservices included** (added notification-service, reviews-service)
-- ✅ **Proper service dependencies** mapped and sequenced
-- ✅ **Use Case pattern** implementation in all phases
-- ✅ **Expanded infrastructure components** for each service
-- ✅ **Realistic timing** adjusted for increased complexity
-- ✅ **Comprehensive testing strategy** across all services
-
-**Note**: This plan focuses exclusively on backend services and APIs. Frontend applications (web and mobile) will be developed in a separate monorepo and can be built in parallel once the core backend services reach Milestone 1.
-
-## 🔄 Living Document
-
-This implementation plan is a living document and should be updated as the project progresses and requirements evolve. Each phase document includes detailed task breakdowns, dependencies, and success criteria.
-
 ---
 
-**Last Updated**: December 2024
-**Target Timeline**: 144 days (29 weeks / 7 months for solo developer)
-**Architecture**: Microservices with Domain-Driven Design (DDD), Clean Architecture, and Use Case Pattern
-
-### Domain Layer Enhancements
-
-- [**Domain Layer Improvements & Future Enhancements**](reference/domain-layer-improvements.md)
-  - Comprehensive analysis of completed domain improvements (CQRS integration, better naming, clean structure)
-  - Detailed future enhancement roadmap with Domain Services, Specifications Pattern, Enhanced Value Objects
-  - Implementation priorities and technical metrics for enterprise-grade domain layer
-
-### Implementation Phases - Domain Enhancements
-
-- [**Phase 0.5: User Service Domain Layer Enhancements**](phases/phase-0-user-service-domain-enhancements.md)
-  - Advanced DDD patterns implementation roadmap
-  - Domain Services, Business Rules, and Specifications Pattern
-  - Enhanced Value Objects and Advanced Domain Events
-  - 4 sub-phases covering 8 days of sophisticated domain development
-
-### Phase Integration & Updates
-
-- [**Phase Integration Summary: Enhanced Domain Layer**](reference/phase-integration-summary.md)
-  - Complete analysis of Phase 0.5 integration into Phase 1
-  - Before/After comparison with technical implementation details
-  - Project impact assessment and timeline adjustments (+4 days)
-  - Enhanced architectural flow and long-term benefits analysis
-
----
-
-_Last Updated: Domain Layer Improvements - Days 5-6 Complete + Phase Integration Summary_
+_Last Updated: Domain Layer Improvements - Days 5-7 Complete + Admin Security Model + Service Boundary Decisions_

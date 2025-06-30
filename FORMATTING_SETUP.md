@@ -1,199 +1,157 @@
-# 🎨 Automatic Code Formatting Setup
+# Code Formatting Setup
 
-This project is configured with **automatic code formatting** using Prettier, ESLint, and EditorConfig. Here's how to enable automatic formatting in your editor.
+This project uses **EditorConfig** and **ESLint** for consistent code formatting. EditorConfig handles basic formatting rules (indentation, line endings, etc.) while ESLint handles code quality and TypeScript-specific rules.
 
-## ✅ What's Already Configured
+## ✅ **What's Configured**
 
-- ✅ **Prettier** - Code formatting rules
-- ✅ **ESLint** - Code linting and auto-fixing
-- ✅ **EditorConfig** - Basic editor settings
-- ✅ **lint-staged** - Format files on git commit
-- ✅ **Husky pre-commit hook** - Automatically format before committing
+- ✅ **EditorConfig** - Basic formatting rules (indentation, line endings, charset)
+- ✅ **ESLint** - Code quality and TypeScript linting rules
 
-## 🔧 VS Code Setup (Recommended)
+## 🛠️ **Editor Setup**
 
-### 1. Install Required Extensions
+### **Visual Studio Code**
 
-The project includes recommended extensions. VS Code should prompt you to install them, or install manually:
+1. **Install Required Extensions**
+   - **ESLint** (`ms-vscode.vscode-eslint`)
+   - **EditorConfig for VS Code** (`EditorConfig.EditorConfig`)
 
-- **Prettier - Code formatter** (`esbenp.prettier-vscode`)
-- **ESLint** (`dbaeumer.vscode-eslint`)
-- **EditorConfig for VS Code** (`editorconfig.editorconfig`)
-
-### 2. Workspace Settings
-
-The project includes `.vscode/settings.json` with optimal settings:
-
-- ✅ Format on save enabled
-- ✅ Format on paste enabled
-- ✅ ESLint auto-fix on save
-- ✅ Auto-organize imports
-- ✅ Prettier as default formatter
-
-### 3. Test Automatic Formatting
-
-1. Open any TypeScript file
-2. Add some messy formatting:
-   ```typescript
-   const test = { a: 1, b: 2, c: 3 };
-   ```
-3. Press `Cmd+S` (Mac) or `Ctrl+S` (Windows) to save
-4. The code should automatically format to:
-   ```typescript
-   const test = { a: 1, b: 2, c: 3 };
-   ```
-
-## 🔧 Other Editors
-
-### WebStorm/IntelliJ IDEA
-
-1. **Install Prettier Plugin**
-   - Go to `Preferences > Plugins`
-   - Install "Prettier" plugin
-
-2. **Configure Prettier**
-   - Go to `Preferences > Languages & Frameworks > JavaScript > Prettier`
-   - Set Prettier package: `./node_modules/prettier`
-   - Check "On 'Reformat Code' action"
-   - Check "On save"
-
-3. **Configure ESLint**
-   - Go to `Preferences > Languages & Frameworks > JavaScript > Code Quality Tools > ESLint`
-   - Check "Automatic ESLint configuration"
-   - Check "Run eslint --fix on save"
-
-### Vim/Neovim
-
-Add to your config:
-
-```vim
-" Install vim-prettier plugin
-Plug 'prettier/vim-prettier', { 'do': 'yarn install' }
-
-" Auto-format on save
-let g:prettier#autoformat = 1
-let g:prettier#autoformat_require_pragma = 0
-```
-
-### Emacs
-
-```elisp
-;; Install prettier-js package
-(use-package prettier-js
-  :ensure t
-  :hook (js-mode . prettier-js-mode)
-  :hook (typescript-mode . prettier-js-mode))
-```
-
-### Sublime Text
-
-1. Install Package Control
-2. Install "JsPrettier" package
-3. Configure in `Preferences > Package Settings > JsPrettier > Settings`:
-
+2. **Configure Settings** (`.vscode/settings.json`)
 ```json
 {
-  "auto_format_on_save": true,
-  "prettier_cli_path": "./node_modules/.bin/prettier"
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
 }
 ```
 
-## 📋 Manual Formatting Commands
+### **JetBrains IDEs (WebStorm/IntelliJ)**
 
-If automatic formatting isn't working, you can run these commands:
+1. **Enable EditorConfig**
+   - Go to `Preferences > Editor > Code Style`
+   - Check "Enable EditorConfig support"
 
-```bash
-# Format all TypeScript files
-npm run format
+2. **Enable ESLint**
+   - Go to `Preferences > Languages & Frameworks > JavaScript > Code Quality Tools > ESLint`
+   - Check "Automatic ESLint configuration"
+   - Set ESLint package: `./node_modules/eslint`
 
-# Lint and fix all issues
-npm run lint
+### **Vim/Neovim**
 
-# Check formatting without changing files
-npx prettier --check "apps/**/*.ts" "libs/**/*.ts"
+```vim
+" Install vim-editorconfig plugin
+Plug 'editorconfig/editorconfig-vim'
 
-# Format specific file
-npx prettier --write apps/user-service/src/main.ts
+" Install ESLint plugin
+Plug 'dense-analysis/ale'
+
+" Configure ALE for ESLint
+let g:ale_linters = {'typescript': ['eslint']}
+let g:ale_fixers = {'typescript': ['eslint']}
+let g:ale_fix_on_save = 1
 ```
 
-## 🔍 Troubleshooting
+### **Emacs**
 
-### ❌ Formatting Not Working in VS Code
+```elisp
+;; Install editorconfig package
+(use-package editorconfig
+  :ensure t
+  :config (editorconfig-mode 1))
 
-1. **Check if Prettier extension is installed and enabled**
+;; Install flycheck for ESLint
+(use-package flycheck
+  :ensure t
+  :init (global-flycheck-mode))
+```
 
+### **Sublime Text**
+
+1. Install "EditorConfig" package
+2. Install "ESLint" package
+3. Configure ESLint package settings:
+```json
+{
+  "node_path": "./node_modules/.bin/eslint"
+}
+```
+
+## 🚀 **Available Commands**
+
+```bash
+# Lint and fix code issues
+npm run lint
+
+# Check for linting issues (no auto-fix)
+npm run lint:check
+
+# Build and check types
+npm run build:check
+```
+
+## 📋 **Manual Formatting Commands**
+
+If needed, you can manually run:
+
+```bash
+# Fix ESLint issues in specific files
+npx eslint --fix apps/user-service/src/main.ts
+
+# Check specific files without fixing
+npx eslint apps/user-service/src/main.ts
+```
+
+## 🛠️ **Troubleshooting**
+
+### **ESLint not working?**
+
+1. **Check if ESLint extension is installed and enabled**
    ```bash
-   code --list-extensions | grep prettier
+   # For VS Code
+   code --list-extensions | grep eslint
    ```
 
-2. **Check VS Code settings** (press `Cmd+,` or `Ctrl+,`):
-   - `editor.formatOnSave` should be `true`
-   - `editor.defaultFormatter` should be `esbenp.prettier-vscode`
+2. **Restart your editor** after installing extensions
 
-3. **Check for conflicting formatters**:
-   - Disable other formatting extensions temporarily
-   - Check if workspace settings override user settings
+3. **Check ESLint configuration**
+   - Make sure `eslint.config.mjs` is present in the root
+   - TypeScript project configuration should be automatic
 
-4. **Restart VS Code**:
-   - Close and reopen VS Code
-   - Reload window: `Cmd+Shift+P > Developer: Reload Window`
+### **EditorConfig not applying?**
 
-### ❌ ESLint Errors Not Auto-Fixing
+1. **Check if EditorConfig extension is installed**
+2. **Restart your editor**
+3. **Check .editorconfig file exists** in the project root
 
-1. **Check ESLint extension is installed**
-2. **Check output panel**: `View > Output > ESLint`
-3. **Manually run ESLint**:
-   ```bash
-   npm run lint
-   ```
+## 📁 **Project Structure**
 
-### ❌ Git Hooks Not Working
+```
+edtech-platform-backend/
+├── .editorconfig              # Basic formatting rules
+├── eslint.config.mjs          # ESLint configuration
+├── .vscode/                   # VS Code settings
+│   └── settings.json
+└── FORMATTING_SETUP.md        # This file
+```
 
-1. **Reinstall Husky**:
+## 📖 **Configuration Files**
 
-   ```bash
-   npm run prepare
-   ```
+### **EditorConfig (`.editorconfig`)**
+- ✅ Indentation: 2 spaces
+- ✅ Line endings: LF (Unix-style)
+- ✅ Charset: UTF-8
+- ✅ Trim trailing whitespace
+- ✅ Insert final newline
 
-2. **Check hook permissions**:
+### **ESLint (`eslint.config.mjs`)**
+- ✅ TypeScript support with type checking
+- ✅ Recommended ESLint rules
+- ✅ Jest testing environment
+- ✅ Node.js globals
 
-   ```bash
-   chmod +x .husky/pre-commit
-   ```
-
-3. **Test the hook manually**:
-   ```bash
-   .husky/pre-commit
-   ```
-
-## 🎯 Configuration Files
-
-- **`.prettierrc`** - Prettier formatting rules
-- **`.prettierignore`** - Files to exclude from formatting
-- **`.editorconfig`** - Basic editor settings
-- **`.vscode/settings.json`** - VS Code workspace settings
-- **`.vscode/extensions.json`** - Recommended VS Code extensions
-- **`.husky/pre-commit`** - Git pre-commit hook
-- **`package.json`** - lint-staged configuration
-
-## 🚀 Benefits
-
-Once set up, you'll get:
-
-- ✅ **Consistent code style** across the entire team
-- ✅ **Automatic formatting** on every save
-- ✅ **Import organization** and cleanup
-- ✅ **ESLint auto-fixes** for common issues
-- ✅ **Pre-commit formatting** ensures clean commits
-- ✅ **Zero configuration** - just save and it works!
-
-## 📞 Need Help?
-
-If automatic formatting still isn't working:
-
-1. Check the troubleshooting section above
-2. Verify your editor has the required extensions
-3. Try the manual formatting commands
-4. Create an issue with your editor details and error messages
-
-Happy coding! 🎉
+The combination of EditorConfig and ESLint provides comprehensive code formatting and quality checks without the need for additional formatters.

@@ -1,14 +1,48 @@
 # Phase 5: Tutor Matching Service Subgraph
 **Duration: 14 days | Priority: High**
 
+## ⚠️ Service Boundary Strategy
+
+**Important Architectural Context**: This phase implements the Tutor Matching Service based on our [Service Boundary Analysis](../../docs/architecture-decisions/service-boundary-analysis.md) decision.
+
+### Migration from User Service
+
+During Phase 1, **all user-related logic (including tutor-specific business rules) remains in User Service** for faster development and solid foundation establishment. Phase 5 will involve:
+
+1. **Extract Tutor-Specific Logic** from User Service:
+   - Tutor tier classification (Junior/Senior/Expert)
+   - Tutoring performance metrics and reputation
+   - Subject expertise and qualification management
+   - Session-based business rules
+
+2. **Preserve User Service Responsibilities**:
+   - Basic user identity and role management (Student→Tutor transitions)
+   - Core security and authentication
+   - Basic profile information
+   - Superadmin operations for admin management
+
+3. **Implement Service Integration**:
+   - User Service validates basic tutor eligibility
+   - Tutor Matching Service handles specialized tutoring operations
+   - Clean API contracts between services
+   - Event-driven synchronization where needed
+
+### Benefits of This Approach
+
+- ✅ **Phase 1 Simplicity**: Single service reduces initial complexity
+- ✅ **Solid Foundation**: Proven domain patterns before extraction
+- ✅ **Clean Migration**: Clear boundaries established for refactoring
+- ✅ **Better Specialization**: Dedicated tutor service for complex matching algorithms
+
 ## Phase Overview
 
-This phase implements the Tutor Matching Service following our standardized microservice architecture with DDD + Clean Architecture + Use Case Pattern. It handles tutor discovery, matching algorithms, and booking workflows.
+This phase implements the Tutor Matching Service following our standardized microservice architecture with DDD + Clean Architecture + Use Case Pattern. It handles tutor discovery, matching algorithms, and booking workflows **with logic migrated from User Service**.
 
 ### Dependencies
-- **Prerequisites**: Phase 1 (User Service) completed
-- **Integrates with**: User Service for tutor/student profiles
-- **Provides**: Tutor discovery and matching for the platform
+- **Prerequisites**: Phase 1 (User Service) completed with tutor-related logic to be extracted
+- **Integrates with**: User Service for basic user operations and role management
+- **Provides**: Specialized tutor discovery and matching for the platform
+- **Migration Source**: Extracts tutor-specific domain logic from User Service
 
 ## Subphase 5.1: Tutor Matching Implementation (10 days)
 
@@ -175,8 +209,8 @@ export class Subject {
   getLevel(): EducationLevel { return this.level; }
 
   equals(other: Subject): boolean {
-    return this.name === other.name && 
-           this.category === other.category && 
+    return this.name === other.name &&
+           this.category === other.category &&
            this.level === other.level;
   }
 }
@@ -201,8 +235,8 @@ export class Availability {
 
   overlaps(other: Availability): boolean {
     if (this.dayOfWeek !== other.dayOfWeek) return false;
-    
-    return this.startTime.isBefore(other.endTime) && 
+
+    return this.startTime.isBefore(other.endTime) &&
            this.endTime.isAfter(other.startTime);
   }
 }
@@ -439,7 +473,7 @@ export class TutorGraphService {
 
   async createTutorNode(tutorProfile: TutorProfile): Promise<void> {
     const session = this.driver.session();
-    
+
     try {
       await session.run(`
         CREATE (t:Tutor {
@@ -486,12 +520,12 @@ export class TutorGraphService {
 
   async findSimilarTutors(tutorId: string, limit: number = 10): Promise<string[]> {
     const session = this.driver.session();
-    
+
     try {
       const result = await session.run(`
         MATCH (t1:Tutor {id: $tutorId})-[:TEACHES]->(s:Subject)<-[:TEACHES]-(t2:Tutor)
         WHERE t1 <> t2 AND t2.isActive = true
-        WITH t2, COUNT(s) as commonSubjects, 
+        WITH t2, COUNT(s) as commonSubjects,
              ABS(t1.hourlyRate - t2.hourlyRate) as rateDiff,
              ABS(t1.experience - t2.experience) as expDiff
         ORDER BY commonSubjects DESC, rateDiff ASC, expDiff ASC
@@ -510,28 +544,28 @@ export class TutorGraphService {
 
   async getMatchingRecommendations(studentPreferences: StudentPreferences): Promise<TutorRecommendation[]> {
     const session = this.driver.session();
-    
+
     try {
       const result = await session.run(`
         MATCH (t:Tutor)-[:TEACHES]->(s:Subject)
-        WHERE s.name = $subjectName 
+        WHERE s.name = $subjectName
           AND s.level = $level
           AND t.hourlyRate <= $maxRate
           AND t.isActive = true
           AND t.rating >= $minRating
-        WITH t, s, 
-             CASE 
+        WITH t, s,
+             CASE
                WHEN t.hourlyRate <= $preferredRate THEN 1.0
                ELSE 1.0 - (t.hourlyRate - $preferredRate) / $maxRate
              END as rateScore,
              t.rating / 5.0 as ratingScore,
-             CASE 
+             CASE
                WHEN t.experience >= 5 THEN 1.0
                ELSE t.experience / 5.0
              END as experienceScore
         ORDER BY (rateScore * 0.4 + ratingScore * 0.4 + experienceScore * 0.2) DESC
         LIMIT $limit
-        RETURN t.userId as userId, 
+        RETURN t.userId as userId,
                (rateScore * 0.4 + ratingScore * 0.4 + experienceScore * 0.2) as score
       `, {
         subjectName: studentPreferences.subject.getName(),
@@ -689,7 +723,7 @@ export class InternalTutorsController {
     request.availability = dto.availability;
     request.bio = dto.bio;
     request.experience = dto.experience;
-    
+
     const response = await this.createTutorProfileUseCase.execute(request);
     return response.tutorProfile;
   }
@@ -704,7 +738,7 @@ export class InternalTutorsController {
     request.location = query.location;
     request.limit = query.limit;
     request.offset = query.offset;
-    
+
     const response = await this.findTutorsUseCase.execute(request);
     return response.tutors;
   }
@@ -713,7 +747,7 @@ export class InternalTutorsController {
   async getTutorProfile(@Param('id') id: string): Promise<TutorProfileDto> {
     const request = new GetTutorProfileRequest();
     request.id = id;
-    
+
     const response = await this.getTutorProfileUseCase.execute(request);
     return response.tutorProfile;
   }
@@ -729,7 +763,7 @@ export class InternalTutorsController {
     request.hourlyRate = dto.hourlyRate;
     request.availability = dto.availability;
     request.subjects = dto.subjects;
-    
+
     const response = await this.updateTutorProfileUseCase.execute(request);
     return response.tutorProfile;
   }
@@ -890,4 +924,4 @@ input AvailabilityInput {
 - **Reviews Service**: Tutor ratings and feedback
 - **Analytics Service**: Matching performance tracking
 
-This service provides intelligent tutor discovery and matching capabilities for the platform! 
+This service provides intelligent tutor discovery and matching capabilities for the platform!

@@ -13,5 +13,14 @@ export * from './repositories';
 // Factories
 export * from './factories';
 
+// Services
+export * from './services';
+
+// Business Rules
+export * from './rules';
+
+// Domain Errors
+export * from './errors';
+
 // Domain Module
 export { UserDomainModule } from './user-domain.module';

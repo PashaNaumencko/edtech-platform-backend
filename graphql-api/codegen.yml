@@ -19,24 +19,24 @@ generates:
         AWSURL: "string"
         AWSPhone: "string"
         AWSIPAddress: "string"
-      
+
       # TypeScript-specific settings
       useIndexSignature: true
       skipTypename: false
       enumsAsTypes: true
       maybeValue: "T | null | undefined"
       inputMaybeValue: "T | null | undefined"
-      
+
       # Context type for resolvers
       contextType: "./context#GraphQLContext"
-      
+
       # Generate resolver signatures
       makeResolverTypeCallable: true
       useTypeImports: true
-      
+
       # Federation support
       federation: true
-      
+
       # Add custom headers
       prepend:
         - "/* eslint-disable */"
@@ -51,7 +51,7 @@ generates:
       # AppSync-specific scalar mappings
       scalars:
         AWSDateTime: "string"
-        AWSDate: "string" 
+        AWSDate: "string"
         AWSTime: "string"
         AWSTimestamp: "number"
         AWSJSON: "string"
@@ -59,15 +59,15 @@ generates:
         AWSURL: "string"
         AWSPhone: "string"
         AWSIPAddress: "string"
-      
+
       # TypeScript settings for AppSync
       skipTypename: true
       enumsAsTypes: true
       maybeValue: "T | null"
-      
+
       # Only generate input/output types for AppSync
       onlyOperationTypes: false
-      
+
       # Custom types for AppSync events
       customTypes:
         AppSyncEvent: |
@@ -92,14 +92,14 @@ generates:
               variables: Record<string, any>;
             };
           }
-        
+
         AppSyncContext: |
           export interface AppSyncContext {
             requestId: string;
             logStreamName: string;
             logGroupName: string;
           }
-      
+
       # Add AppSync headers
       prepend:
         - "/* eslint-disable */"
@@ -129,18 +129,17 @@ generates:
         - ""
 
 hooks:
-  afterAllFileWrite:
-    - prettier --write
+  afterAllFileWrite: []
 
 # Configuration for schema composition integration
 schemaComposition:
   # Watch for schema changes and regenerate types
   watchPattern: "schemas/**/*.graphql"
-  
+
   # Pre-generation hooks
   beforeGenerate:
     - npm run enhanced-compose
-    
-  # Post-generation hooks  
+
+  # Post-generation hooks
   afterGenerate:
-    - npm run type-check 
+    - npm run type-check
