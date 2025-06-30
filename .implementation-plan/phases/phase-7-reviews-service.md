@@ -162,7 +162,7 @@ export class GetEntityReviewsUseCase implements IUseCase<GetEntityReviewsRequest
 
 #### PostgreSQL Integration
 ```typescript
-// infrastructure/database/entities/review.orm-entity.ts
+// infrastructure/postgres/entities/review.orm-entity.ts
 @Entity('reviews')
 export class ReviewOrmEntity {
   @PrimaryGeneratedColumn('uuid')

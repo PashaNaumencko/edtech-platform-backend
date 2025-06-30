@@ -1,0 +1,291 @@
+import * as cdk from 'aws-cdk-lib';
+import * as appsync from '@aws-cdk/aws-appsync-alpha';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { Construct } from 'constructs';
+
+export interface AppSyncStackProps extends cdk.StackProps {
+  environment: string;
+  vpc: ec2.Vpc;
+  userPool: cognito.UserPool;
+  userPoolClient: cognito.UserPoolClient;
+}
+
+export class AppSyncStack extends cdk.Stack {
+  public readonly api: appsync.GraphqlApi;
+  public readonly userDataSource: appsync.LambdaDataSource;
+
+  constructor(scope: Construct, id: string, props: AppSyncStackProps) {
+    super(scope, id, props);
+
+    // AppSync GraphQL API - Start with basic setup
+    this.api = new appsync.GraphqlApi(this, 'EdTechGraphQLAPI', {
+      name: `EdTech-GraphQL-API-${props.environment}`,
+      authorizationConfig: {
+        defaultAuthorization: {
+          authorizationType: appsync.AuthorizationType.USER_POOL,
+          userPoolConfig: {
+            userPool: props.userPool,
+            appIdClientRegex: props.userPoolClient.userPoolClientId,
+            defaultAction: appsync.UserPoolDefaultAction.ALLOW,
+          },
+        },
+        additionalAuthorizationModes: [
+          {
+            authorizationType: appsync.AuthorizationType.API_KEY,
+            apiKeyConfig: {
+              expires: cdk.Expiration.after(cdk.Duration.days(365)),
+              description: 'API Key for development and testing',
+            },
+          },
+          {
+            authorizationType: appsync.AuthorizationType.IAM,
+          },
+        ],
+      },
+      logConfig: {
+        fieldLogLevel: appsync.FieldLogLevel.ALL,
+        retention: logs.RetentionDays.ONE_WEEK,
+      },
+      xrayEnabled: true,
+    });
+
+    // Basic schema types for User operations
+    const userType = new appsync.ObjectType('User', {
+      definition: {
+        id: appsync.GraphqlType.id({ isRequired: true }),
+        email: appsync.GraphqlType.string({ isRequired: true }),
+        firstName: appsync.GraphqlType.string({ isRequired: true }),
+        lastName: appsync.GraphqlType.string({ isRequired: true }),
+        fullName: appsync.GraphqlType.string({ isRequired: true }),
+        isTutor: appsync.GraphqlType.boolean({ isRequired: true }),
+        isActive: appsync.GraphqlType.boolean({ isRequired: true }),
+        createdAt: appsync.GraphqlType.awsDateTime({ isRequired: true }),
+        updatedAt: appsync.GraphqlType.awsDateTime({ isRequired: true }),
+      },
+    });
+
+    // Input types
+    const createUserInput = new appsync.InputType('CreateUserInput', {
+      definition: {
+        email: appsync.GraphqlType.string({ isRequired: true }),
+        firstName: appsync.GraphqlType.string({ isRequired: true }),
+        lastName: appsync.GraphqlType.string({ isRequired: true }),
+        password: appsync.GraphqlType.string({ isRequired: true }),
+      },
+    });
+
+    const updateUserInput = new appsync.InputType('UpdateUserInput', {
+      definition: {
+        firstName: appsync.GraphqlType.string(),
+        lastName: appsync.GraphqlType.string(),
+      },
+    });
+
+    // Add types to schema
+    this.api.addType(userType);
+    this.api.addType(createUserInput);
+    this.api.addType(updateUserInput);
+
+    // Lambda execution role for resolvers
+    const lambdaExecutionRole = new iam.Role(this, 'LambdaExecutionRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+      inlinePolicies: {
+        ServiceCommunication: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ['ssm:GetParameter', 'ssm:GetParameters', 'secretsmanager:GetSecretValue'],
+              resources: [
+                `arn:aws:ssm:${this.region}:${this.account}:parameter/edtech/${props.environment}/*`,
+                `arn:aws:secretsmanager:${this.region}:${this.account}:secret:edtech/${props.environment}/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // User Service Lambda Resolver
+    const userServiceResolver = new lambda.Function(this, 'UserServiceResolver', {
+      functionName: `edtech-${props.environment}-user-resolver`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          console.log('AppSync Event:', JSON.stringify(event, null, 2));
+          
+          const { fieldName, arguments: args, source, identity } = event;
+          
+          // Mock data for Phase 1 - will be replaced with actual service calls
+          switch (fieldName) {
+            case 'me':
+              return {
+                id: identity?.sub || 'mock-user-id',
+                email: identity?.email || 'user@example.com',
+                firstName: 'John',
+                lastName: 'Doe',
+                fullName: 'John Doe',
+                isTutor: false,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+            
+            case 'user':
+              return {
+                id: args.id,
+                email: 'user@example.com',
+                firstName: 'John',
+                lastName: 'Doe',
+                fullName: 'John Doe',
+                isTutor: false,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+
+            case 'createUser':
+              return {
+                id: 'new-user-id',
+                email: args.input.email,
+                firstName: args.input.firstName,
+                lastName: args.input.lastName,
+                fullName: args.input.firstName + ' ' + args.input.lastName,
+                isTutor: false,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+
+            case 'updateUser':
+              return {
+                id: args.id,
+                email: 'user@example.com',
+                firstName: args.input.firstName || 'John',
+                lastName: args.input.lastName || 'Doe',
+                fullName: (args.input.firstName || 'John') + ' ' + (args.input.lastName || 'Doe'),
+                isTutor: false,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+            
+            default:
+              throw new Error('Unknown field: ' + fieldName);
+          }
+        };
+      `),
+      environment: {
+        ENVIRONMENT: props.environment,
+        USER_SERVICE_URL: `http://user-service.${props.environment}:3001`,
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+      },
+      role: lambdaExecutionRole,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      vpc: props.vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      logRetention: logs.RetentionDays.ONE_WEEK,
+    });
+
+    // Create Lambda Data Source
+    this.userDataSource = this.api.addLambdaDataSource(
+      'UserServiceDataSource',
+      userServiceResolver,
+      {
+        name: 'UserServiceDataSource',
+        description: 'Lambda data source for User Service operations',
+      }
+    );
+
+    // Add Query and Mutation fields
+    this.api.addQuery('me', new appsync.ResolvableField({
+      returnType: userType.attribute(),
+      dataSource: this.userDataSource,
+    }));
+
+    this.api.addQuery('user', new appsync.ResolvableField({
+      returnType: userType.attribute(),
+      args: {
+        id: appsync.GraphqlType.id({ isRequired: true }),
+      },
+      dataSource: this.userDataSource,
+    }));
+
+    this.api.addMutation('createUser', new appsync.ResolvableField({
+      returnType: userType.attribute({ isRequired: true }),
+      args: {
+        input: createUserInput.attribute({ isRequired: true }),
+      },
+      dataSource: this.userDataSource,
+    }));
+
+    this.api.addMutation('updateUser', new appsync.ResolvableField({
+      returnType: userType.attribute({ isRequired: true }),
+      args: {
+        id: appsync.GraphqlType.id({ isRequired: true }),
+        input: updateUserInput.attribute({ isRequired: true }),
+      },
+      dataSource: this.userDataSource,
+    }));
+
+    // Store AppSync configuration in SSM
+    new ssm.StringParameter(this, 'AppSyncApiIdParameter', {
+      parameterName: `/edtech/${props.environment}/appsync/api-id`,
+      stringValue: this.api.apiId,
+      description: 'AppSync GraphQL API ID',
+    });
+
+    new ssm.StringParameter(this, 'AppSyncApiUrlParameter', {
+      parameterName: `/edtech/${props.environment}/appsync/api-url`,
+      stringValue: this.api.graphqlUrl,
+      description: 'AppSync GraphQL API URL',
+    });
+
+    new ssm.StringParameter(this, 'AppSyncApiKeyParameter', {
+      parameterName: `/edtech/${props.environment}/appsync/api-key`,
+      stringValue: this.api.apiKey!,
+      description: 'AppSync API Key for development',
+    });
+
+    // Outputs
+    new cdk.CfnOutput(this, 'GraphQLApiId', {
+      value: this.api.apiId,
+      description: 'AppSync GraphQL API ID',
+      exportName: `${props.environment}-GraphQLApiId`,
+    });
+
+    new cdk.CfnOutput(this, 'GraphQLApiUrl', {
+      value: this.api.graphqlUrl,
+      description: 'AppSync GraphQL API URL',
+      exportName: `${props.environment}-GraphQLApiUrl`,
+    });
+
+    new cdk.CfnOutput(this, 'GraphQLApiKey', {
+      value: this.api.apiKey!,
+      description: 'AppSync API Key for development',
+      exportName: `${props.environment}-GraphQLApiKey`,
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: props.userPool.userPoolId,
+      description: 'Cognito User Pool ID for authentication',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
+      value: props.userPoolClient.userPoolClientId,
+      description: 'Cognito User Pool Client ID for authentication',
+    });
+  }
+} 

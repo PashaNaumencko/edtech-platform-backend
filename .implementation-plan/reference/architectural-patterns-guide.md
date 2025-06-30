@@ -14,6 +14,91 @@ This document provides **simplified, practical** guidelines for implementing arc
 6. **Targeted Caching**: Redis cache only for specific high-performance use cases
 7. **Saga Orchestration**: Use NestJS/CQRS Saga classes for distributed transactions
 
+## 🗄️ Database Naming & Infrastructure Conventions
+
+### Infrastructure Naming Philosophy
+We name infrastructure components **as they actually are**, not with generic abstractions:
+
+- ✅ **postgres** (PostgreSQL databases)
+- ✅ **dynamo** (DynamoDB tables)  
+- ✅ **neo4j** (Neo4j graph databases)
+- ✅ **redis** (Redis cache instances)
+- ❌ ~~database~~ (too generic)
+- ❌ ~~cache~~ (too generic)
+- ❌ ~~nosql~~ (too generic)
+
+### Service Database Allocation
+
+| Service | Primary Storage | Secondary Storage | Use Case |
+|---------|----------------|-------------------|----------|
+| **user-service** | `postgres` | `redis` (sessions) | User profiles, authentication |
+| **learning-service** | `postgres` | `redis` (cache) | Courses, lessons, progress |
+| **tutor-matching-service** | `neo4j` | `postgres` (profiles) | Graph relationships, availability |
+| **payment-service** | `postgres` | - | Transactions, billing |
+| **communication-service** | `dynamo` | `redis` (real-time) | Messages, chat history |
+| **content-service** | `dynamo` | `s3` (files) | File metadata, media |
+| **analytics-service** | `dynamo` | `redshift` (warehouse) | Events, metrics, reports |
+| **ai-service** | `vector-db` | `dynamo` (metadata) | Embeddings, recommendations |
+
+### Folder Structure Examples
+
+```typescript
+// ✅ Correct - specific database types
+apps/user-service/src/infrastructure/
+├── postgres/           # PostgreSQL implementation
+│   ├── entities/      # TypeORM entities
+│   ├── repositories/ # Repository implementations
+│   └── migrations/   # Database migrations
+└── redis/             # Redis implementation
+    ├── cache/        # Cache services
+    └── sessions/     # Session management
+
+apps/tutor-matching-service/src/infrastructure/
+├── neo4j/             # Neo4j graph database
+│   ├── schemas/      # Graph schemas
+│   ├── repositories/ # Graph repositories
+│   └── queries/      # Cypher queries
+└── postgres/          # PostgreSQL for profiles
+    ├── entities/
+    └── repositories/
+
+apps/communication-service/src/infrastructure/
+├── dynamo/            # DynamoDB implementation
+│   ├── entities/     # DynamoDB entities
+│   ├── repositories/ # DynamoDB repositories
+│   └── indexes/      # Secondary indexes
+└── redis/             # Redis for real-time features
+    └── pubsub/       # Pub/Sub messaging
+```
+
+### Configuration Patterns
+
+```typescript
+// ✅ Specific database configuration
+// apps/user-service/src/config/postgres.config.ts
+export const postgresConfig = {
+  host: process.env.POSTGRES_HOST,
+  port: parseInt(process.env.POSTGRES_PORT),
+  username: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
+  database: process.env.POSTGRES_DB,
+};
+
+// apps/tutor-matching-service/src/config/neo4j.config.ts
+export const neo4jConfig = {
+  uri: process.env.NEO4J_URI,
+  username: process.env.NEO4J_USER,
+  password: process.env.NEO4J_PASSWORD,
+};
+
+// apps/communication-service/src/config/dynamo.config.ts
+export const dynamoConfig = {
+  region: process.env.AWS_REGION,
+  endpoint: process.env.DYNAMO_ENDPOINT,
+  tableName: process.env.DYNAMO_TABLE_NAME,
+};
+```
+
 ## 🏗️ 1. Domain-Driven Design (DDD) + CQRS Pattern
 
 ### 1.1 Simplified Domain Model
@@ -2036,3 +2121,129 @@ This optimized example demonstrates:
 - **Type-safe patterns** for inter-service communication
 - **Optimized caching strategies** with targeted use cases
 - **Lambda integration** for background processing with ESM modules 
+
+## 🔧 GraphQL API TypeScript Strategy
+
+### 📁 Hybrid JavaScript/TypeScript Approach
+
+For the GraphQL API layer (`@/graphql-api`), we use a hybrid approach that balances development speed with type safety:
+
+#### ✅ **Keep as JavaScript (Infrastructure/Utilities)**
+```
+graphql-api/
+├── scripts/              # Build and development tools (JavaScript)
+│   ├── compose-schemas.js
+│   ├── enhanced-compose.js
+│   └── validate-schemas.js
+├── registry/             # Schema versioning utilities (JavaScript)  
+│   └── schema-registry.js
+├── error-handling/       # Base error classes (JavaScript)
+│   └── graphql-errors.js
+└── gateway/              # Apollo Gateway (JavaScript)
+    └── index.js
+```
+
+#### 🔄 **Implement in TypeScript (Business Logic)**
+```
+graphql-api/
+├── resolvers/            # Service-specific resolvers (TypeScript)
+│   ├── user/
+│   │   └── user.resolver.ts
+│   ├── learning/
+│   │   └── learning.resolver.ts
+│   └── payment/
+│       └── payment.resolver.ts
+├── types/                # Generated GraphQL types (TypeScript)
+│   ├── generated.ts      # Auto-generated from schema
+│   ├── user.types.ts     # Service-specific types
+│   └── common.types.ts   # Shared types
+└── services/             # Service integration (TypeScript)
+    ├── user.service.ts
+    └── auth.service.ts
+```
+
+### 🏗️ **Development Workflow**
+
+#### **For TypeScript Resolvers**
+```bash
+# Auto-generate types from GraphQL schema
+npm run codegen
+
+# Development with watch mode
+npm run build:watch
+
+# Type checking
+npm run type-check
+
+# Build for deployment
+npm run build:resolvers
+```
+
+#### **For JavaScript Utilities**
+```bash
+# Schema composition (JavaScript)
+npm run enhanced-compose
+
+# Schema validation (JavaScript) 
+npm run schema-validate
+
+# Registry management (JavaScript)
+npm run registry:list
+```
+
+### 📝 **TypeScript Resolver Implementation**
+```typescript
+// resolvers/user/user.resolver.ts
+import { AppSyncEvent, User, CreateUserResponse } from '../../types/generated';
+
+export class UserResolver {
+  static async createUser(event: AppSyncEvent): Promise<CreateUserResponse> {
+    // Type-safe business logic with auto-generated types
+    const { input } = event.arguments;
+    
+    // Call to JavaScript error utilities
+    const { ValidationError } = require('../../error-handling/graphql-errors');
+    
+    if (!input.email) {
+      throw new ValidationError('Email is required', 'email');
+    }
+    
+    // Strongly typed return using generated types
+    return { user: newUser, errors: [] };
+  }
+}
+
+// AWS Lambda handler with typed events
+export const handler = async (event: AppSyncEvent): Promise<any> => {
+  switch (event.fieldName) {
+    case 'createUser':
+      return await UserResolver.createUser(event);
+    default:
+      throw new Error(`Unknown field: ${event.fieldName}`);
+  }
+};
+```
+
+### 🎯 **Benefits of This Approach**
+
+#### **Development Experience**
+- ✅ **Fast Build Tools**: JavaScript utilities compile instantly
+- ✅ **Type Safety**: Critical business logic gets TypeScript benefits
+- ✅ **Auto-generated Types**: GraphQL schema changes automatically update types
+- ✅ **Tool Compatibility**: Best compatibility with Apollo/GraphQL ecosystem
+
+#### **Production Benefits**
+- ✅ **Performance**: Compiled TypeScript for Lambda functions
+- ✅ **Reliability**: Type checking for critical business operations
+- ✅ **Maintainability**: Clear separation of concerns
+- ✅ **Developer Experience**: Type hints and autocomplete for business logic
+
+### 💡 **Implementation Guidelines**
+
+**For Day 4 and Beyond:**
+- ✅ **Keep utilities in JavaScript** (schema registry, composition, error classes)
+- ✅ **Implement business logic in TypeScript** (resolvers, service integration)
+- ✅ **Use GraphQL code generation** for automatic type creation
+- ✅ **Gradual migration** as needed for specific components
+
+This hybrid strategy provides optimal balance between development speed and type safety, perfect for the EdTech platform's microservices architecture. 

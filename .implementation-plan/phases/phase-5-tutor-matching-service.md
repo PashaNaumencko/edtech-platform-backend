@@ -555,7 +555,7 @@ export class TutorGraphService {
 
 #### PostgreSQL Integration
 ```typescript
-// infrastructure/database/entities/tutor-profile.orm-entity.ts
+// infrastructure/postgres/entities/tutor-profile.orm-entity.ts
 @Entity('tutor_profiles')
 export class TutorProfileOrmEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -598,7 +598,7 @@ export class TutorProfileOrmEntity {
   updatedAt: Date;
 }
 
-// infrastructure/database/repositories/tutor-profile.repository.impl.ts
+// infrastructure/postgres/repositories/tutor-profile.repository.impl.ts
 @Injectable()
 export class TutorProfileRepositoryImpl implements TutorProfileRepository {
   constructor(

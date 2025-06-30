@@ -1,0 +1,45 @@
+# EdTech Platform - Base GraphQL Schema
+# Phase 1 - User Service Schema
+
+type Query {
+  # User queries
+  me: User
+  user(id: ID!): User
+}
+
+type Mutation {
+  # User mutations
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+}
+
+type User {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String!
+  fullName: String!
+  isTutor: Boolean!
+  isActive: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+input CreateUserInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  password: String!
+}
+
+input UpdateUserInput {
+  firstName: String
+  lastName: String
+}
+
+# AWS AppSync built-in scalar types
+scalar AWSDateTime
+scalar AWSEmail
+scalar AWSJSON
+scalar AWSPhone
+scalar AWSURL 

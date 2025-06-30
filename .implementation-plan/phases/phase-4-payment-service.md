@@ -406,7 +406,7 @@ export class StripeWebhookHandler {
 
 #### PostgreSQL Integration
 ```typescript
-// infrastructure/database/entities/payment.orm-entity.ts
+// infrastructure/postgres/entities/payment.orm-entity.ts
 @Entity('payments')
 export class PaymentOrmEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -437,7 +437,7 @@ export class PaymentOrmEntity {
   updatedAt: Date;
 }
 
-// infrastructure/database/repositories/payment.repository.impl.ts
+// infrastructure/postgres/repositories/payment.repository.impl.ts
 @Injectable()
 export class PaymentRepositoryImpl implements PaymentRepository {
   constructor(

@@ -522,7 +522,7 @@ export class StudentEnrolledHandler implements IEventHandler<StudentEnrolledEven
 
 #### PostgreSQL Integration
 ```typescript
-// infrastructure/database/entities/course.orm-entity.ts
+// infrastructure/postgres/entities/course.orm-entity.ts
 @Entity('courses')
 export class CourseOrmEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -559,7 +559,7 @@ export class CourseOrmEntity {
   updatedAt: Date;
 }
 
-// infrastructure/database/repositories/course.repository.impl.ts
+// infrastructure/postgres/repositories/course.repository.impl.ts
 @Injectable()
 export class CourseRepositoryImpl implements CourseRepository {
   constructor(

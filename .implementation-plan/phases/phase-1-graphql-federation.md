@@ -1,979 +1,524 @@
-# Phase 1: GraphQL Federation Foundation & User Service
-**Duration: 14 days | Priority: Critical**
+# Phase 1: GraphQL Federation Foundation & User Service - Step-by-Step Development Plan
+**Duration: 16 days | Priority: Critical**
 
 ## Phase Overview
-
-This phase establishes the **GraphQL Federation** architecture foundation and implements the User Service as the first subgraph. It demonstrates the pattern that all subsequent services will follow.
-
-### Architecture Pattern
-- **Supergraph**: AWS AppSync (unified GraphQL API)
-- **Subgraphs**: Each microservice defines its domain schema
-- **Resolvers**: Lambda functions call internal microservice APIs
-- **Internal APIs**: HTTP REST with `/internal` prefix
-
-## Subphase 1.1: GraphQL Federation Setup (3 days)
-
-### GraphQL Composition Tooling
-- Set up Apollo Federation composition tools
-- Create schema composition CI/CD pipeline
-- Implement subgraph validation and testing
-- Set up schema registry for versioning
-
-### AppSync Infrastructure (CDK)
-```typescript
-// cdk/lib/stacks/graphql-api-stack.ts
-export class GraphQLApiStack extends Stack {
-  public readonly graphqlApi: GraphqlApi;
-  
-  constructor(scope: Construct, id: string, props: GraphQLApiStackProps) {
-    // Create AppSync API with Cognito auth
-    this.graphqlApi = new GraphqlApi(this, 'EdTechGraphQLApi', {
-      name: 'EdTech-Platform-API',
-      schema: SchemaFile.fromAsset(path.join(__dirname, '../graphql/supergraph.graphql')),
-      authorizationConfig: {
-        defaultAuthorization: {
-          authorizationType: AuthorizationType.USER_POOL,
-          userPoolConfig: { userPool: props.userPool },
-        },
-      },
-    });
-  }
-}
-```
-
-## Subphase 1.2: User Service Subgraph Implementation (4 days)
-
-### User Service Folder Structure Implementation
-Following our standardized microservice architecture:
-
-```typescript
-apps/user-service/
-├── src/
-│   ├── domain/                           # 🔵 DOMAIN LAYER
-│   │   ├── entities/
-│   │   │   ├── user.entity.ts            # AggregateRoot from @nestjs/cqrs
-│   │   │   ├── tutor-profile.entity.ts
-│   │   │   ├── social-account.entity.ts
-│   │   │   └── index.ts
-│   │   ├── value-objects/
-│   │   │   ├── email.vo.ts
-│   │   │   ├── user-id.vo.ts
-│   │   │   └── index.ts
-│   │   ├── events/                       # Domain events
-│   │   │   ├── user-created.event.ts
-│   │   │   ├── user-became-tutor.event.ts
-│   │   │   └── index.ts
-│   │   ├── repositories/                 # Repository interfaces
-│   │   │   ├── user.repository.ts
-│   │   │   └── index.ts
-│   │   └── exceptions/
-│   │       ├── user-not-found.exception.ts
-│   │       └── index.ts
-│   │
-│   ├── application/                      # 🟡 APPLICATION LAYER
-│   │   ├── use-cases/                    # 🎯 USE CASES (business flows)
-│   │   │   ├── create-user/
-│   │   │   │   ├── create-user.usecase.ts
-│   │   │   │   ├── create-user.request.ts
-│   │   │   │   └── create-user.response.ts
-│   │   │   ├── update-profile/
-│   │   │   │   ├── update-profile.usecase.ts
-│   │   │   │   ├── update-profile.request.ts
-│   │   │   │   └── update-profile.response.ts
-│   │   │   ├── become-tutor/
-│   │   │   │   ├── become-tutor.usecase.ts
-│   │   │   │   ├── become-tutor.request.ts
-│   │   │   │   └── become-tutor.response.ts
-│   │   │   └── search-users/
-│   │   │       ├── search-users.usecase.ts
-│   │   │       ├── search-users.request.ts
-│   │   │       └── search-users.response.ts
-│   │   ├── event-handlers/               # Local event handlers
-│   │   │   ├── user-created.handler.ts
-│   │   │   └── user-became-tutor.handler.ts
-│   │   ├── dto/
-│   │   │   ├── user.dto.ts
-│   │   │   └── index.ts
-│   │   └── ports/                        # External service interfaces
-│   │       ├── email.port.ts
-│   │       └── event-bus.port.ts
-│   │
-│   ├── infrastructure/                   # 🔴 INFRASTRUCTURE LAYER
-│   │   ├── database/
-│   │   │   ├── entities/                 # TypeORM entities
-│   │   │   │   ├── user.orm-entity.ts
-│   │   │   │   ├── tutor-profile.orm-entity.ts
-│   │   │   │   └── social-account.orm-entity.ts
-│   │   │   ├── repositories/             # Repository implementations
-│   │   │   │   ├── user.repository.impl.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── migrations/
-│   │   │   │   ├── 001-create-users.ts
-│   │   │   │   ├── 002-create-tutor-profiles.ts
-│   │   │   │   └── 003-create-social-accounts.ts
-│   │   │   └── mappers/                  # Domain ↔ ORM mappers
-│   │   │       ├── user.mapper.ts
-│   │   │       └── index.ts
-│   │   ├── postgres/                     # PostgreSQL specific
-│   │   │   ├── connection/
-│   │   │   │   ├── postgres.config.ts
-│   │   │   │   └── postgres.module.ts
-│   │   │   └── repositories/
-│   │   │       └── postgres-user.repository.ts
-│   │   ├── redis/                        # Redis caching & sessions
-│   │   │   ├── connection/
-│   │   │   │   ├── redis.config.ts
-│   │   │   │   └── redis.module.ts
-│   │   │   └── cache/
-│   │   │       └── user.cache.ts
-│   │   ├── cognito-auth/                 # AWS Cognito authentication
-│   │   │   ├── connection/
-│   │   │   │   ├── cognito.config.ts
-│   │   │   │   └── cognito.module.ts
-│   │   │   ├── services/
-│   │   │   │   ├── auth.service.ts
-│   │   │   │   └── jwt.service.ts
-│   │   │   └── guards/
-│   │   │       └── cognito-auth.guard.ts
-│   │   ├── s3/                           # S3 for profile images
-│   │   │   ├── connection/
-│   │   │   │   ├── s3.config.ts
-│   │   │   │   └── s3.module.ts
-│   │   │   └── services/
-│   │   │       └── profile-image.service.ts
-│   │   ├── email/                        # Email service
-│   │   │   ├── connection/
-│   │   │   │   ├── email.config.ts
-│   │   │   │   └── email.module.ts
-│   │   │   ├── services/
-│   │   │   │   └── email.service.ts
-│   │   │   └── templates/
-│   │   │       └── welcome.template.ts
-│   │   └── event-bridge/                 # EventBridge messaging
-│   │       ├── connection/
-│   │       │   ├── event-bridge.config.ts
-│   │       │   └── event-bridge.module.ts
-│   │       ├── publishers/
-│   │       │   └── user-event.publisher.ts
-│   │       └── mappers/
-│   │           └── event.mapper.ts
-│   │
-│   ├── presentation/                     # 🟢 PRESENTATION LAYER
-│   │   ├── http/
-│   │   │   ├── controllers/
-│   │   │   │   ├── internal/             # Internal APIs for Lambda resolvers
-│   │   │   │   │   ├── users.internal.controller.ts
-│   │   │   │   │   └── auth.internal.controller.ts
-│   │   │   │   └── public/               # Public APIs
-│   │   │   │       └── health.controller.ts
-│   │   │   ├── guards/
-│   │   │   │   └── service-auth.guard.ts
-│   │   │   ├── interceptors/
-│   │   │   │   ├── logging.interceptor.ts
-│   │   │   │   └── transform.interceptor.ts
-│   │   │   └── filters/
-│   │   │       └── http-exception.filter.ts
-│   │   ├── graphql/
-│   │   │   ├── schemas/
-│   │   │   │   └── user.subgraph.graphql
-│   │   │   ├── federation/
-│   │   │   │   └── schema-export.ts
-│   │   │   └── scalars/
-│   │   │       └── date-time.scalar.ts
-│   │   └── events/
-│   │       └── handlers/
-│   │           └── external-user.handler.ts
-│   │
-│   ├── shared/
-│   │   ├── constants/
-│   │   │   └── user.constants.ts
-│   │   ├── enums/
-│   │   │   ├── user-status.enum.ts
-│   │   │   └── tutor-status.enum.ts
-│   │   └── types/
-│   │       └── user.types.ts
-│   │
-│   ├── config/
-│   │   ├── app.config.ts
-│   │   ├── database.config.ts
-│   │   ├── redis.config.ts
-│   │   └── aws.config.ts
-│   │
-│   ├── main.ts
-│   └── app.module.ts
-```
-
-### Use Case Implementation Examples
-
-```typescript
-// application/use-cases/create-user/create-user.usecase.ts
-import { IUseCase } from '@edtech/types';
-
-@Injectable()
-export class CreateUserUseCase implements IUseCase<CreateUserRequest, CreateUserResponse> {
-  constructor(
-    private userRepository: UserRepository,
-    private eventBus: EventBus,
-    private emailService: EmailPort,
-  ) {}
-
-  async execute(request: CreateUserRequest): Promise<CreateUserResponse> {
-    // 1. Create domain entity
-    const user = User.create({
-      email: new Email(request.email),
-      profile: UserProfile.create(request.profile),
-    });
-
-    // 2. Persist to database
-    const savedUser = await this.userRepository.save(user);
-
-    // 3. Commit domain events (triggers event handlers)
-    savedUser.commit();
-
-    // 4. Return response
-    return CreateUserResponse.fromDomain(savedUser);
-  }
-}
-
-// application/use-cases/create-user/create-user.request.ts
-export class CreateUserRequest {
-  email: string;
-  profile: {
-    firstName: string;
-    lastName: string;
-    timezone?: string;
-    locale?: string;
-  };
-}
-
-// application/use-cases/create-user/create-user.response.ts
-export class CreateUserResponse {
-  id: string;
-  email: string;
-  profile: UserProfileDto;
-  createdAt: Date;
-
-  static fromDomain(user: User): CreateUserResponse {
-    return {
-      id: user.id.value,
-      email: user.email.value,
-      profile: UserProfileDto.fromDomain(user.profile),
-      createdAt: user.createdAt,
-    };
-  }
-}
-```
-
-### Domain Entity with AggregateRoot
-
-```typescript
-// domain/entities/user.entity.ts
-import { AggregateRoot } from '@nestjs/cqrs';
-import { UserCreatedEvent, UserBecameTutorEvent } from '../events';
-
-export class User extends AggregateRoot {
-  constructor(
-    private readonly _id: UserId,
-    private readonly _email: Email,
-    private _profile: UserProfile,
-    private _isTutor: boolean = false,
-    private _tutorProfile?: TutorProfile,
-    private readonly _createdAt: Date = new Date(),
-  ) {
-    super();
-  }
-
-  static create(data: CreateUserData): User {
-    const user = new User(
-      UserId.generate(),
-      new Email(data.email),
-      UserProfile.create(data.profile),
-    );
-
-    // Apply domain event
-    user.apply(new UserCreatedEvent(user));
-    return user;
-  }
-
-  becomeTutor(tutorData: BecomeTutorData): void {
-    if (this._isTutor) {
-      throw new UserAlreadyTutorException();
-    }
-
-    this._isTutor = true;
-    this._tutorProfile = TutorProfile.create(tutorData);
-
-    // Apply domain event
-    this.apply(new UserBecameTutorEvent(this));
-  }
-
-  updateProfile(profileData: UpdateProfileData): void {
-    this._profile = this._profile.update(profileData);
-    this.apply(new UserProfileUpdatedEvent(this));
-  }
-
-  // Getters
-  get id(): UserId { return this._id; }
-  get email(): Email { return this._email; }
-  get profile(): UserProfile { return this._profile; }
-  get isTutor(): boolean { return this._isTutor; }
-  get tutorProfile(): TutorProfile | undefined { return this._tutorProfile; }
-  get createdAt(): Date { return this._createdAt; }
-}
-```
-
-### Event Handler Implementation
-
-```typescript
-// application/event-handlers/user-created.handler.ts
-@EventsHandler(UserCreatedEvent)
-export class UserCreatedHandler implements IEventHandler<UserCreatedEvent> {
-  constructor(
-    private emailService: EmailPort,
-    private analyticsService: AnalyticsPort,
-  ) {}
-
-  async handle(event: UserCreatedEvent): Promise<void> {
-    // Side effects triggered by user creation
-    await Promise.all([
-      this.emailService.sendWelcomeEmail(event.user.email.value),
-      this.analyticsService.trackUserCreated(event.user.id.value),
-    ]);
-  }
-}
-```
-
-### User Subgraph Schema
-```graphql
-# apps/user-service/src/graphql/user.subgraph.graphql
-extend type Query {
-  me: User
-  user(id: ID!): User @auth(requires: USER)
-  searchUsers(query: String!, limit: Int = 20): [User!]!
-}
-
-extend type Mutation {
-  updateProfile(input: UpdateProfileInput!): User! @auth(requires: USER)
-  becomeTutor(input: BecomeTutorInput!): User! @auth(requires: USER)
-  linkSocialAccount(input: SocialAuthInput!): User! @auth(requires: USER)
-}
-
-type User @key(fields: "id") {
-  id: ID!
-  email: String!
-  profile: UserProfile!
-  isTutor: Boolean!
-  tutorProfile: TutorProfile
-  socialAccounts: [SocialAccount!]!
-  isActive: Boolean!
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
-}
-
-type UserProfile {
-  firstName: String!
-  lastName: String!
-  fullName: String!
-  timezone: String
-  locale: String
-  preferredLanguage: String
-  videoIntroUrl: String
-  onboardingCompleted: Boolean!
-}
-
-type TutorProfile {
-  isActive: Boolean!
-  hourlyRate: Float
-  currency: String
-  subjects: [String!]!
-  languages: [String!]!
-  experience: String
-  education: String
-  description: String
-  rating: Float
-  totalReviews: Int!
-}
-
-# Federation relationships
-extend type Course @key(fields: "id") {
-  id: ID! @external
-  tutorId: ID! @external
-  tutor: User @requires(fields: "tutorId")
-}
-
-extend type Booking @key(fields: "id") {
-  id: ID! @external
-  studentId: ID! @external
-  tutorId: ID! @external
-  student: User @requires(fields: "studentId")
-  tutor: User @requires(fields: "tutorId")
-}
-```
-
-### Internal HTTP API Controllers
-```typescript
-// presentation/http/controllers/internal/users.internal.controller.ts
-@Controller('internal/users')
-@UseGuards(ServiceAuthGuard) // Service-to-service auth
-export class InternalUsersController {
-  constructor(
-    private createUserUseCase: CreateUserUseCase,
-    private updateProfileUseCase: UpdateProfileUseCase,
-    private becomeEutorUseCase: BecomeTutorUseCase,
-    private searchUsersUseCase: SearchUsersUseCase,
-  ) {}
-  
-  @Get(':id')
-  async getUser(@Param('id') id: string): Promise<UserDto> {
-    const request = new GetUserRequest();
-    request.id = id;
-    
-    const response = await this.getUserUseCase.execute(request);
-    return response.user;
-  }
-  
-  @Get()
-  async searchUsers(@Query() query: SearchUsersDto): Promise<UserDto[]> {
-    const request = new SearchUsersRequest();
-    request.query = query.query;
-    request.limit = query.limit;
-    
-    const response = await this.searchUsersUseCase.execute(request);
-    return response.users;
-  }
-  
-  @Post()
-  async createUser(@Body() dto: CreateUserDto): Promise<UserDto> {
-    const request = new CreateUserRequest();
-    request.email = dto.email;
-    request.profile = dto.profile;
-    
-    const response = await this.createUserUseCase.execute(request);
-    return response.user;
-  }
-  
-  @Put(':id/profile')
-  async updateProfile(
-    @Param('id') id: string, 
-    @Body() dto: UpdateProfileDto
-  ): Promise<UserDto> {
-    const request = new UpdateProfileRequest();
-    request.id = id;
-    request.profile = dto.profile;
-    
-    const response = await this.updateProfileUseCase.execute(request);
-    return response.user;
-  }
-  
-  @Post(':id/become-tutor')
-  async becomeTutor(
-    @Param('id') id: string,
-    @Body() dto: BecomeTutorDto
-  ): Promise<UserDto> {
-    const request = new BecomeTutorRequest();
-    request.userId = id;
-    request.tutorProfile = dto.tutorProfile;
-    
-    const response = await this.becomeTutorUseCase.execute(request);
-    return response.user;
-  }
-}
-
-// presentation/http/controllers/internal/auth.internal.controller.ts
-@Controller('internal/auth')
-@UseGuards(ServiceAuthGuard)
-export class InternalAuthController {
-  
-  @Post('validate-token')
-  async validateToken(@Body() { token }: { token: string }) {
-    const request = new ValidateTokenRequest();
-    request.token = token;
-    
-    const response = await this.validateTokenUseCase.execute(request);
-    return response.user;
-  }
-  
-  @Post('social-link')
-  async linkSocialAccount(@Body() dto: LinkSocialAccountDto) {
-    const request = new LinkSocialAccountRequest();
-    request.userId = dto.userId;
-    request.provider = dto.provider;
-    request.providerAccountId = dto.providerAccountId;
-    
-    const response = await this.linkSocialAccountUseCase.execute(request);
-    return response.user;
-  }
-}
-```
-
-### GraphQL Subgraph Schema
-```graphql
-# presentation/graphql/schemas/user.subgraph.graphql
-extend type Query {
-  me: User
-  user(id: ID!): User @auth(requires: USER)
-  searchUsers(query: String!, limit: Int = 20): [User!]!
-}
-
-extend type Mutation {
-  updateProfile(input: UpdateProfileInput!): User! @auth(requires: USER)
-  becomeTutor(input: BecomeTutorInput!): User! @auth(requires: USER)
-  linkSocialAccount(input: SocialAuthInput!): User! @auth(requires: USER)
-}
-
-type User @key(fields: "id") {
-  id: ID!
-  email: String!
-  profile: UserProfile!
-  isTutor: Boolean!
-  tutorProfile: TutorProfile
-  socialAccounts: [SocialAccount!]!
-  isActive: Boolean!
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
-}
-
-type UserProfile {
-  firstName: String!
-  lastName: String!
-  fullName: String!
-  timezone: String
-  locale: String
-  preferredLanguage: String
-  videoIntroUrl: String
-  onboardingCompleted: Boolean!
-}
-
-type TutorProfile {
-  isActive: Boolean!
-  hourlyRate: Float
-  currency: String
-  subjects: [String!]!
-  languages: [String!]!
-  experience: String
-  education: String
-  description: String
-  rating: Float
-  totalReviews: Int!
-}
-
-# Federation relationships
-extend type Course @key(fields: "id") {
-  id: ID! @external
-  tutorId: ID! @external
-  tutor: User @requires(fields: "tutorId")
-}
-
-extend type Booking @key(fields: "id") {
-  id: ID! @external
-  studentId: ID! @external
-  tutorId: ID! @external
-  student: User @requires(fields: "studentId")
-  tutor: User @requires(fields: "tutorId")
-}
-```
-
-### Lambda Resolvers (Central GraphQL API)
-```typescript
-// graphql-api/resolvers/user-resolvers.ts
-import { AppSyncResolverHandler } from 'aws-lambda';
-import { UserServiceClient } from '../clients/user-service-client';
-
-const userServiceClient = new UserServiceClient({
-  baseURL: process.env.USER_SERVICE_URL,
-});
-
-export const getUserResolver: AppSyncResolverHandler<any, any> = async (event) => {
-  const { id } = event.arguments;
-  
-  try {
-    // Calls internal API, returns UserDto
-    const user = await userServiceClient.getUser(id);
-    return user;
-  } catch (error) {
-    console.error('Failed to fetch user:', error);
-    throw new Error('User not found');
-  }
-};
-
-export const meResolver: AppSyncResolverHandler<any, any> = async (event) => {
-  const userId = event.identity.sub; // From Cognito
-  
-  try {
-    // Calls internal API, returns UserDto
-    const user = await userServiceClient.getUser(userId);
-    return user;
-  } catch (error) {
-    console.error('Failed to fetch current user:', error);
-    throw new Error('Failed to fetch user profile');
-  }
-};
-
-export const updateProfileResolver: AppSyncResolverHandler<any, any> = async (event) => {
-  const { input } = event.arguments;
-  const userId = event.identity.sub;
-  
-  try {
-    // Calls internal API, returns UserDto
-    const user = await userServiceClient.updateProfile(userId, input);
-    return user;
-  } catch (error) {
-    console.error('Failed to update profile:', error);
-    throw new Error('Failed to update profile');
-  }
-};
-
-// Federation resolver for Course.tutor field
-export const courseTutorResolver: AppSyncResolverHandler<any, any> = async (event) => {
-  const { tutorId } = event.source;
-  
-  try {
-    // Calls internal API, returns UserDto
-    const tutor = await userServiceClient.getUser(tutorId);
-    return tutor;
-  } catch (error) {
-    console.error('Failed to fetch course tutor:', error);
-    return null;
-  }
-};
-```
-
-## Subphase 1.3: Database & Domain Logic (4 days)
-
-### PostgreSQL Schema
-```sql
--- Database migration for user service
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  first_name VARCHAR(100) NOT NULL,
-  last_name VARCHAR(100) NOT NULL,
-  timezone VARCHAR(50),
-  locale VARCHAR(10),
-  preferred_language VARCHAR(10),
-  video_intro_url VARCHAR(500),
-  onboarding_completed BOOLEAN DEFAULT FALSE,
-  is_tutor BOOLEAN DEFAULT FALSE,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE tutor_profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  is_active BOOLEAN DEFAULT FALSE,
-  hourly_rate DECIMAL(10,2),
-  currency VARCHAR(3),
-  subjects TEXT[],
-  languages TEXT[],
-  experience TEXT,
-  education TEXT,
-  description TEXT,
-  rating DECIMAL(3,2) DEFAULT 0,
-  total_reviews INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE social_accounts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  provider VARCHAR(20) NOT NULL,
-  provider_user_id VARCHAR(255) NOT NULL,
-  provider_email VARCHAR(255) NOT NULL,
-  linked_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(provider, provider_user_id)
-);
-
--- Indexes for performance
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_is_tutor ON users(is_tutor);
-CREATE INDEX idx_tutor_profiles_user_id ON tutor_profiles(user_id);
-CREATE INDEX idx_tutor_profiles_subjects ON tutor_profiles USING GIN(subjects);
-CREATE INDEX idx_social_accounts_user_id ON social_accounts(user_id);
-```
-
-### Service Implementation
-```typescript
-// apps/user-service/src/services/user.service.ts
-@Injectable()
-export class UserService {
-  constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(TutorProfile)
-    private tutorProfileRepository: Repository<TutorProfile>,
-    private eventBus: EventBusService,
-  ) {}
-
-  async findById(id: string): Promise<User | null> {
-    return await this.userRepository.findOne({
-      where: { id },
-      relations: ['tutorProfile', 'socialAccounts'],
-    });
-  }
-
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create(createUserDto);
-    const savedUser = await this.userRepository.save(user);
-    
-    // Publish domain event
-    await this.eventBus.publish({
-      source: 'user-service',
-      detailType: 'User Created',
-      detail: {
-        userId: savedUser.id,
-        email: savedUser.email,
-        isTutor: savedUser.isTutor,
-      },
-    });
-    
-    return savedUser;
-  }
-
-  async updateProfile(id: string, updateDto: UpdateProfileDto): Promise<User> {
-    await this.userRepository.update(id, updateDto);
-    const updatedUser = await this.findById(id);
-    
-    // Publish domain event
-    await this.eventBus.publish({
-      source: 'user-service',
-      detailType: 'User Profile Updated',
-      detail: {
-        userId: id,
-        changes: updateDto,
-      },
-    });
-    
-    return updatedUser;
-  }
-
-  async becomeTutor(id: string, tutorDto: BecomeTutorDto): Promise<User> {
-    // Update user to be tutor
-    await this.userRepository.update(id, { isTutor: true });
-    
-    // Create tutor profile
-    const tutorProfile = this.tutorProfileRepository.create({
-      userId: id,
-      ...tutorDto,
-    });
-    await this.tutorProfileRepository.save(tutorProfile);
-    
-    const updatedUser = await this.findById(id);
-    
-    // Publish domain event
-    await this.eventBus.publish({
-      source: 'user-service',
-      detailType: 'User Became Tutor',
-      detail: {
-        userId: id,
-        tutorProfile: tutorDto,
-      },
-    });
-    
-    return updatedUser;
-  }
-}
-```
-
-## Subphase 1.4: Service-to-Service Authentication (3 days)
-
-### Service JWT Authentication
-```typescript
-// libs/auth/src/service-auth.guard.ts
-@Injectable()
-export class ServiceAuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
-    
-    if (!token) {
-      throw new UnauthorizedException('Service token required');
-    }
-
-    try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.SERVICE_JWT_SECRET,
-      });
-      
-      // Verify this is a service token
-      if (payload.type !== 'service') {
-        throw new UnauthorizedException('Invalid token type');
-      }
-      
-      request.serviceContext = payload;
-      return true;
-    } catch {
-      throw new UnauthorizedException('Invalid service token');
-    }
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
-  }
-}
-
-// Service client for inter-service communication
-export class UserServiceClient {
-  constructor(private config: { baseURL: string }) {}
-
-  private async getServiceToken(): Promise<string> {
-    return this.jwtService.sign(
-      { 
-        service: 'lambda-resolver',
-        type: 'service',
-        permissions: ['user:read', 'user:write']
-      },
-      { 
-        secret: process.env.SERVICE_JWT_SECRET,
-        expiresIn: '1h'
-      }
-    );
-  }
-
-  async getUser(id: string): Promise<UserDto> {
-    const token = await this.getServiceToken();
-    const response = await axios.get(`${this.config.baseURL}/internal/users/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    return response.data;
-  }
-}
-```
-
-## Schema Composition Process
-
-### Automated Schema Composition
-```typescript
-// graphql-api/composition/compose-schema.ts
-import { composeServices } from '@apollo/composition';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-
-interface SubgraphConfig {
-  name: string;
-  schemaPath: string;
-  serviceUrl: string;
-}
-
-const subgraphs: SubgraphConfig[] = [
-  {
-    name: 'user',
-    schemaPath: '../apps/user-service/src/graphql/user.subgraph.graphql',
-    serviceUrl: 'http://user-service:3001',
-  },
-  {
-    name: 'learning',
-    schemaPath: '../apps/learning-service/src/graphql/learning.subgraph.graphql',
-    serviceUrl: 'http://learning-service:3002',
-  },
-  // Add more subgraphs as they're implemented
-];
-
-export async function composeSupergraph(): Promise<string> {
-  const serviceList = subgraphs.map(subgraph => ({
-    name: subgraph.name,
-    typeDefs: readFileSync(join(__dirname, subgraph.schemaPath), 'utf8'),
-    url: subgraph.serviceUrl,
-  }));
-
-  const { schema, errors } = composeServices(serviceList);
-
-  if (errors && errors.length > 0) {
-    console.error('Schema composition errors:', errors);
-    throw new Error(`Schema composition failed: ${errors.map(e => e.message).join(', ')}`);
-  }
-
-  // Write composed schema for AppSync
-  const supergraphPath = join(__dirname, '../schemas/supergraph.graphql');
-  writeFileSync(supergraphPath, schema);
-
-  console.log('✅ Supergraph composed successfully');
-  return schema;
-}
-
-// CLI script for composition
-if (require.main === module) {
-  composeSupergraph()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error('❌ Composition failed:', error);
-      process.exit(1);
-    });
-}
-```
-
-### CI/CD Integration
-```yaml
-# .github/workflows/schema-composition.yml
-name: GraphQL Schema Composition
-
-on:
-  push:
-    paths:
-      - 'apps/*/src/graphql/**'
-      - 'graphql-api/**'
-
-jobs:
-  compose-schema:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
-        run: pnpm install
-        
-      - name: Validate subgraph schemas
-        run: pnpm validate:subgraphs
-        
-      - name: Compose supergraph
-        run: pnpm compose:schema
-        
-      - name: Deploy to AppSync (if main branch)
-        if: github.ref == 'refs/heads/main'
-        run: pnpm cdk deploy GraphQLApiStack
-```
-
-## Success Criteria for Phase 1
+This phase establishes the GraphQL Federation foundation with AWS AppSync as the supergraph and implements the User Service as the first microservice following our standardized DDD + Clean Architecture + Use Case Pattern.
+
+## Step-by-Step Development Plan
+
+### Week 1: GraphQL Federation Foundation (Days 1-7)
+
+#### Day 1: Project Foundation Setup
+**Goal**: Establish development environment and federation tooling
+**Developer**: DevOps/Backend Lead
+
+**Tasks**:
+1. **Morning (2h)**: Install Apollo Federation dependencies
+   ```bash
+   npm install @apollo/federation @apollo/gateway @apollo/subgraph
+   npm install -D @apollo/rover
+   ```
+2. **Mid-Morning (2h)**: Create federation workspace structure
+   ```
+   graphql-api/
+   ├── gateway/
+   ├── schemas/
+   ├── resolvers/
+   └── types/
+   ```
+3. **Afternoon (3h)**: Set up schema composition pipeline
+   - Create `rover.yaml` configuration
+   - Set up schema validation scripts
+   - Configure composition commands
+4. **Late Afternoon (1h)**: Create development scripts and documentation
+
+**Deliverables**:
+- [ ] Apollo Federation workspace configured
+- [ ] Schema composition pipeline working
+- [ ] Development scripts created
+- [ ] Basic federation documentation
+
+**Acceptance Criteria**:
+- ✅ `npm run compose-schemas` command works
+- ✅ Schema validation pipeline runs successfully
+- ✅ Development environment documented
+
+---
+
+#### Day 2: AWS AppSync Infrastructure (CDK)
+**Goal**: Create AppSync GraphQL API infrastructure
+**Developer**: DevOps/Backend Lead
+
+**Tasks**:
+1. **Morning (3h)**: Create AppSync CDK stack
+   ```typescript
+   // cdk/lib/stacks/appsync-stack.ts
+   export class AppSyncStack extends Stack {
+     // AppSync API configuration
+     // Cognito authentication setup
+     // Basic resolver infrastructure
+   }
+   ```
+2. **Afternoon (3h)**: Configure Cognito authentication
+   - User pool configuration
+   - Identity pool setup
+   - AppSync authentication configuration
+3. **Late Afternoon (2h)**: Deploy and test basic AppSync setup
+
+**Deliverables**:
+- [ ] AppSync CDK stack created
+- [ ] Cognito authentication configured
+- [ ] Basic AppSync API deployed
+- [ ] Authentication flow tested
+
+**Acceptance Criteria**:
+- ✅ AppSync API accessible via AWS Console
+- ✅ Cognito authentication working
+- ✅ Basic GraphQL introspection query succeeds
+
+---
+
+#### Day 3: Schema Registry & Error Handling
+**Goal**: Implement schema registry and error handling patterns
+**Developer**: Backend Lead
+
+**Tasks**:
+1. **Morning (3h)**: Set up schema registry
+   - Apollo Studio schema registry configuration
+   - Schema versioning strategy
+   - Schema evolution procedures
+2. **Afternoon (3h)**: Implement error handling patterns
+   - Custom error types for GraphQL
+   - Error formatting and logging
+   - Client-friendly error responses
+3. **Evening (2h)**: Create schema composition automation
+
+**Deliverables**:
+- [ ] Schema registry configured
+- [ ] Error handling patterns implemented
+- [ ] Schema composition automated
+- [ ] Error handling documentation
+
+**Acceptance Criteria**:
+- ✅ Schema registry receives and stores schemas
+- ✅ Error responses follow consistent format
+- ✅ Schema composition runs automatically
+
+---
+
+#### Day 4: User Service Project Setup
+**Goal**: Initialize User Service with standardized folder structure
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (2h)**: Create User Service folder structure
+   ```
+   apps/user-service/src/
+   ├── domain/
+   │   ├── entities/
+   │   ├── value-objects/
+   │   ├── events/
+   │   └── repositories/
+   ├── application/
+   │   ├── use-cases/
+   │   ├── dto/
+   │   └── event-handlers/
+   ├── infrastructure/
+   │   ├── postgres/
+   │   ├── redis/
+   │   ├── cognito-auth/
+   │   ├── s3/
+   │   ├── email/
+   │   └── event-bridge/
+   └── presentation/
+       ├── http/
+       └── graphql/
+   ```
+2. **Mid-Morning (2h)**: Set up NestJS modules and dependency injection
+3. **Afternoon (2h)**: Configure TypeORM for PostgreSQL
+4. **Late Afternoon (2h)**: Create base interfaces and types
+
+**Deliverables**:
+- [ ] User Service project structure created
+- [ ] NestJS modules configured
+- [ ] TypeORM database connection working
+- [ ] Base interfaces and types defined
+
+**Acceptance Criteria**:
+- ✅ User Service starts without errors
+- ✅ Database connection established
+- ✅ Health check endpoint returns 200
+
+---
+
+#### Days 5-6: Domain Layer Implementation
+**Goal**: Implement complete domain layer for User Service
+**Developer**: Backend Developer
+
+**Day 5 Tasks**:
+1. **Morning (3h)**: Create User entity (AggregateRoot)
+   ```typescript
+   // domain/entities/user.entity.ts
+   export class User extends AggregateRoot {
+     static create(data: CreateUserData): User
+     becomeTutor(certifications: Certification[]): void
+     updateProfile(profile: UserProfile): void
+   }
+   ```
+2. **Afternoon (3h)**: Create value objects (Email, UserId, UserProfile)
+3. **Late Afternoon (2h)**: Create domain events
+
+**Day 6 Tasks**:
+1. **Morning (3h)**: Create TutorProfile entity and SocialAccount entity
+2. **Afternoon (3h)**: Define repository interfaces
+3. **Late Afternoon (2h)**: Create domain exceptions and business rules
+
+**Deliverables**:
+- [ ] User entity with business logic
+- [ ] TutorProfile and SocialAccount entities
+- [ ] Value objects (Email, UserId, UserProfile)
+- [ ] Domain events (UserCreated, UserBecameTutor)
+- [ ] Repository interfaces
+- [ ] Domain exceptions
+
+**Acceptance Criteria**:
+- ✅ All domain entities have unit tests
+- ✅ Business rules are enforced in domain
+- ✅ Domain events are properly emitted
+
+---
+
+#### Day 7: Application Layer Foundation
+**Goal**: Set up application layer structure and base use cases
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement IUseCase interface and base classes
+   ```typescript
+   // application/use-cases/create-user/create-user.usecase.ts
+   export class CreateUserUseCase implements IUseCase<CreateUserRequest, CreateUserResponse>
+   ```
+2. **Afternoon (3h)**: Create DTO classes and request/response objects
+3. **Late Afternoon (2h)**: Set up event handlers structure
+
+**Deliverables**:
+- [ ] IUseCase interface implemented
+- [ ] Base use case structure created
+- [ ] DTO classes defined
+- [ ] Event handlers structure ready
+
+**Acceptance Criteria**:
+- ✅ Use case pattern follows IUseCase interface
+- ✅ DTOs properly map domain objects
+- ✅ Event handler registration working
+
+---
+
+### Week 2: Core Implementation (Days 8-12)
+
+#### Day 8: Critical Use Cases Implementation
+**Goal**: Implement core user management use cases
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement CreateUserUseCase
+   - User validation and creation
+   - Domain event publishing
+   - Response mapping
+2. **Afternoon (3h)**: Implement UpdateUserProfileUseCase
+3. **Late Afternoon (2h)**: Implement BecomeTutorUseCase
+
+**Deliverables**:
+- [ ] CreateUserUseCase with full implementation
+- [ ] UpdateUserProfileUseCase
+- [ ] BecomeTutorUseCase
+- [ ] Unit tests for all use cases
+
+**Acceptance Criteria**:
+- ✅ All use cases pass unit tests
+- ✅ Domain events are properly emitted
+- ✅ Business validation working correctly
+
+---
+
+#### Day 9: Database Infrastructure
+**Goal**: Implement PostgreSQL integration and data persistence
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Create TypeORM entities (UserOrmEntity, TutorProfileOrmEntity)
+   ```typescript
+   // infrastructure/postgres/entities/user.orm-entity.ts
+   @Entity('users')
+   export class UserOrmEntity {
+     @PrimaryGeneratedColumn('uuid')
+     id: string;
+     @Column() email: string;
+     // ... other fields
+   }
+   ```
+2. **Afternoon (3h)**: Implement repository implementations
+3. **Late Afternoon (2h)**: Create database migrations
+
+**Deliverables**:
+- [ ] TypeORM entities created
+- [ ] Repository implementations
+- [ ] Database migrations
+- [ ] Database seeds for testing
+
+**Acceptance Criteria**:
+- ✅ Database schema created successfully
+- ✅ CRUD operations working
+- ✅ Migrations run without errors
+
+---
+
+#### Day 10: Redis Caching & Cognito Integration
+**Goal**: Implement caching and authentication services
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement Redis caching service
+   ```typescript
+   // infrastructure/redis/cache/user.cache.ts
+   export class UserCacheService {
+     async getUser(id: string): Promise<UserDto | null>
+     async setUser(user: UserDto): Promise<void>
+   }
+   ```
+2. **Afternoon (3h)**: Implement Cognito authentication service
+3. **Late Afternoon (2h)**: Create authentication guards and decorators
+
+**Deliverables**:
+- [ ] Redis caching service
+- [ ] Cognito authentication service
+- [ ] Authentication guards
+- [ ] JWT token validation
+
+**Acceptance Criteria**:
+- ✅ User data cached and retrieved correctly
+- ✅ Cognito authentication working
+- ✅ Protected endpoints require valid tokens
+
+---
+
+#### Day 11: S3 & Email Services
+**Goal**: Implement file upload and email notification services
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement S3 profile image upload service
+   ```typescript
+   // infrastructure/s3/services/profile-image.service.ts
+   export class ProfileImageService {
+     async uploadProfileImage(userId: string, file: Buffer): Promise<string>
+   }
+   ```
+2. **Afternoon (3h)**: Implement email service with SES
+3. **Late Afternoon (2h)**: Create email templates for user registration
+
+**Deliverables**:
+- [ ] S3 file upload service
+- [ ] Email service with templates
+- [ ] Profile image upload endpoint
+- [ ] Welcome email functionality
+
+**Acceptance Criteria**:
+- ✅ Profile images upload to S3 successfully
+- ✅ Welcome emails sent on user registration
+- ✅ Email templates render correctly
+
+---
+
+#### Day 12: EventBridge & Event Handlers
+**Goal**: Implement domain event publishing and handling
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement EventBridge publisher service
+   ```typescript
+   // infrastructure/event-bridge/publishers/user-event.publisher.ts
+   export class UserEventPublisher {
+     async publishUserCreated(user: User): Promise<void>
+   }
+   ```
+2. **Afternoon (3h)**: Implement event handlers for side effects
+3. **Late Afternoon (2h)**: Test event-driven workflows
+
+**Deliverables**:
+- [ ] EventBridge publisher service
+- [ ] Event handlers for domain events
+- [ ] Event-driven side effects working
+- [ ] Event publishing tests
+
+**Acceptance Criteria**:
+- ✅ Domain events published to EventBridge
+- ✅ Event handlers process events correctly
+- ✅ Side effects execute as expected
+
+---
+
+### Week 3: API & Integration (Days 13-16)
+
+#### Day 13: Internal HTTP Controllers
+**Goal**: Implement internal API controllers for service-to-service communication
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement internal user controllers
+   ```typescript
+   // presentation/http/controllers/internal/users.internal.controller.ts
+   @Controller('internal/users')
+   export class InternalUsersController {
+     @Get(':id') async getUser(@Param('id') id: string): Promise<UserDto>
+     @Post() async createUser(@Body() dto: CreateUserDto): Promise<UserDto>
+   }
+   ```
+2. **Afternoon (3h)**: Implement internal auth controllers
+3. **Late Afternoon (2h)**: Add API documentation and validation
+
+**Deliverables**:
+- [ ] Internal users controller
+- [ ] Internal auth controller
+- [ ] API validation and error handling
+- [ ] Swagger documentation
+
+**Acceptance Criteria**:
+- ✅ All internal APIs working correctly
+- ✅ Service authentication required
+- ✅ API documentation complete
+
+---
+
+#### Day 14: GraphQL Subgraph Schema
+**Goal**: Create User service GraphQL subgraph schema
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Define User subgraph schema
+   ```graphql
+   # presentation/graphql/schemas/user.subgraph.graphql
+   type User @key(fields: "id") {
+     id: ID!
+     email: String!
+     firstName: String!
+     lastName: String!
+     isTutor: Boolean!
+   }
+   ```
+2. **Afternoon (3h)**: Implement schema-first GraphQL resolvers
+3. **Late Afternoon (2h)**: Add federation directives and entity resolvers
+
+**Deliverables**:
+- [ ] User subgraph schema
+- [ ] GraphQL resolvers
+- [ ] Federation directives
+- [ ] Schema composition working
+
+**Acceptance Criteria**:
+- ✅ Subgraph schema validates
+- ✅ Resolvers return correct data
+- ✅ Federation directives working
+
+---
+
+#### Day 15: Lambda Resolvers Implementation
+**Goal**: Create Lambda resolvers for AppSync integration
+**Developer**: Backend Developer
+
+**Tasks**:
+1. **Morning (3h)**: Implement User query resolvers
+   ```typescript
+   // graphql-api/resolvers/user/user.resolvers.ts
+   export const getUserResolver = async (event: AppSyncEvent): Promise<UserDto> => {
+     // Call internal user service API
+   }
+   ```
+2. **Afternoon (3h)**: Implement User mutation resolvers
+3. **Late Afternoon (2h)**: Set up service-to-service authentication
+
+**Deliverables**:
+- [ ] Lambda query resolvers
+- [ ] Lambda mutation resolvers
+- [ ] Service authentication tokens
+- [ ] Error handling in resolvers
+
+**Acceptance Criteria**:
+- ✅ AppSync can call Lambda resolvers
+- ✅ Resolvers authenticate with User service
+- ✅ GraphQL operations return correct data
+
+---
+
+#### Day 16: Testing & Integration Validation
+**Goal**: Complete testing and validate end-to-end integration
+**Developer**: Backend Developer + QA
+
+**Tasks**:
+1. **Morning (3h)**: Complete unit test coverage
+   - Domain layer tests
+   - Use case tests
+   - Infrastructure tests
+2. **Afternoon (3h)**: Integration testing
+   - Database integration tests
+   - External service integration tests
+   - GraphQL federation tests
+3. **Late Afternoon (2h)**: End-to-end workflow testing
+
+**Deliverables**:
+- [ ] 90%+ unit test coverage
+- [ ] Integration tests passing
+- [ ] End-to-end user registration flow working
+- [ ] GraphQL federation functioning
+
+**Acceptance Criteria**:
+- ✅ All tests passing
+- ✅ User can register via GraphQL API
+- ✅ Internal APIs respond correctly
+- ✅ Events published and handled properly
+
+---
+
+## Phase 1 Success Criteria
 
 ### Technical Acceptance Criteria
-- ✅ User subgraph schema validates and composes successfully
-- ✅ AppSync API deployed with user operations working
-- ✅ Lambda resolvers successfully call user service internal APIs
-- ✅ User service internal APIs respond correctly with authentication
-- ✅ Database operations (CRUD) working for users and tutor profiles
-- ✅ Service-to-service authentication implemented and tested
+- ✅ GraphQL Federation setup with AppSync
+- ✅ User Service fully implemented with DDD pattern
+- ✅ All infrastructure components operational
+- ✅ Internal APIs secured and documented
+- ✅ Lambda resolvers integrated with AppSync
+- ✅ 90%+ test coverage achieved
 
 ### Functional Acceptance Criteria
-- ✅ Users can be queried via GraphQL API
-- ✅ User profiles can be updated via GraphQL mutations
-- ✅ Users can become tutors via GraphQL mutation
-- ✅ Social account linking works
-- ✅ Federation resolvers work for User references in other types
-- ✅ Real-time subscriptions working for user updates
+- ✅ Users can register and authenticate
+- ✅ Profile management working
+- ✅ Tutor registration process functional
+- ✅ GraphQL API accessible and secure
+- ✅ Service-to-service communication established
 
 ### Performance Criteria
-- ✅ GraphQL query response time < 200ms for simple queries
-- ✅ Database queries optimized with proper indexing
-- ✅ Lambda cold start time < 1 second
-- ✅ Service-to-service calls < 100ms within VPC
+- ✅ GraphQL queries respond < 200ms
+- ✅ Database operations < 100ms
+- ✅ Cache hit ratio > 80%
+- ✅ Authentication validation < 50ms
 
-## Phase Dependencies
-- **Prerequisites**: Phase 0 (Project Setup & Foundation) completed
-- **Requires**: CDK infrastructure, user service basic structure
-- **Outputs**: Working GraphQL Federation foundation, User Service subgraph
+## Risk Mitigation
 
-## Next Phase
-This foundation sets up the entire GraphQL Federation architecture and demonstrates the pattern for all subsequent services. Phase 2 will implement the Learning Service following the same pattern. 
+### Technical Risks
+- **Schema Composition Issues**: Daily schema validation prevents breaking changes
+- **Authentication Complexity**: Step-by-step Cognito integration with testing
+- **Database Performance**: Early optimization and indexing strategy
+
+### Delivery Risks
+- **Scope Creep**: Strict daily deliverables and acceptance criteria
+- **Dependencies**: Parallel development where possible
+- **Integration Issues**: Daily integration testing and validation
+
+## Daily Standup Template
+
+**Yesterday**: What was completed from the plan
+**Today**: Current day's specific tasks and deliverables  
+**Blockers**: Any impediments to completing today's acceptance criteria
+**Integration**: Any cross-service dependencies or issues
+
+This step-by-step plan provides clear daily objectives, specific deliverables, and measurable acceptance criteria for successful Phase 1 completion. 

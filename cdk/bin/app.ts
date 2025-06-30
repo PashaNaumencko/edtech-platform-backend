@@ -4,6 +4,9 @@ import * as cdk from 'aws-cdk-lib';
 import { NetworkStack } from '../lib/stacks/network-stack';
 import { SharedServicesStack } from '../lib/stacks/shared-services-stack';
 import { UserServiceStack } from '../lib/stacks/user-service-stack';
+import { AppSyncBasicStack } from '../lib/stacks/appsync-basic-stack';
+// import { AppSyncStack } from '../lib/stacks/appsync-stack';
+// import { AppSyncStack } from '../lib/stacks/appsync-stack';
 
 const app = new cdk.App();
 
@@ -64,7 +67,29 @@ const userServiceStack = new UserServiceStack(app, `${currentConfig.stackNamePre
   contentBucket: sharedServicesStack.contentBucket
 });
 
+// AppSync Basic Stack (Day 2 completion - Cognito ready for AppSync)
+const appSyncStack = new AppSyncBasicStack(app, `${currentConfig.stackNamePrefix}-AppSync`, {
+  env: currentConfig.env,
+  tags: commonTags,
+  environment,
+  vpc: networkStack.vpc,
+  userPool: sharedServicesStack.userPool,
+  userPoolClient: sharedServicesStack.userPoolClient
+});
+
+// AppSync Stack (commented out until schema definition issues are resolved)
+// const appSyncStack = new AppSyncStack(app, `${currentConfig.stackNamePrefix}-AppSync`, {
+//   env: currentConfig.env,
+//   tags: commonTags,
+//   environment,
+//   vpc: networkStack.vpc,
+//   userPool: sharedServicesStack.userPool,
+//   userPoolClient: sharedServicesStack.userPoolClient
+// });
+
 // Add dependencies
 sharedServicesStack.addDependency(networkStack);
 userServiceStack.addDependency(networkStack);
-userServiceStack.addDependency(sharedServicesStack); 
+userServiceStack.addDependency(sharedServicesStack);
+appSyncStack.addDependency(sharedServicesStack);
+// appSyncStack.addDependency(sharedServicesStack); 

@@ -3,6 +3,28 @@
 ## Platform Overview
 This platform follows a **microservices architecture** with **GraphQL Federation** for unified API composition.
 
+## 🗄️ Infrastructure Naming Conventions
+
+### Database Naming Philosophy
+We name infrastructure components **as they actually are**, not with generic abstractions:
+
+- ✅ **postgres** (PostgreSQL databases)
+- ✅ **dynamo** (DynamoDB tables)  
+- ✅ **neo4j** (Neo4j graph databases)
+- ✅ **redis** (Redis cache instances)
+- ✅ **s3** (S3 storage buckets)
+- ✅ **redshift** (Redshift data warehouse)
+- ✅ **vector-db** (Vector databases like Pinecone)
+- ❌ ~~database~~ (too generic)
+- ❌ ~~cache~~ (too generic)
+- ❌ ~~nosql~~ (too generic)
+
+This naming convention is used throughout our:
+- **Infrastructure code** (CDK stacks, Terraform)
+- **Environment variables** (POSTGRES_HOST, DYNAMO_TABLE)
+- **Folder structures** (`infrastructure/postgres/`, `infrastructure/dynamo/`)
+- **Service documentation** and configuration files
+
 ## Architecture Layers
 
 ### 1. External API Layer (Client-Facing)
@@ -72,49 +94,49 @@ graphql-api/
 1. **User Service** (`user-service`)
    - **Subgraph**: User, UserProfile, SocialAccount types
    - **Port**: 3001
-   - **Database**: PostgreSQL
+   - **Storage**: `postgres` (primary) + `redis` (sessions)
    - **Internal APIs**: `/internal/users/*`, `/internal/auth/*`
 
 2. **Learning Service** (`learning-service`)
    - **Subgraph**: Course, Lesson, Enrollment types
    - **Port**: 3002
-   - **Database**: PostgreSQL
+   - **Storage**: `postgres` (primary) + `redis` (cache)
    - **Internal APIs**: `/internal/courses/*`, `/internal/lessons/*`
 
 3. **Tutor Matching Service** (`tutor-matching-service`)
    - **Subgraph**: TutorProfile, Availability, Matching types
    - **Port**: 3003
-   - **Database**: Neo4j + PostgreSQL
+   - **Storage**: `neo4j` (graph) + `postgres` (profiles)
    - **Internal APIs**: `/internal/tutors/*`, `/internal/matching/*`
 
 4. **Payment Service** (`payment-service`)
    - **Subgraph**: Payment, Subscription, Invoice types
    - **Port**: 3004
-   - **Database**: PostgreSQL
+   - **Storage**: `postgres`
    - **Internal APIs**: `/internal/payments/*`, `/internal/billing/*`
 
 5. **Communication Service** (`communication-service`)
    - **Subgraph**: Conversation, Message types
    - **Port**: 3005
-   - **Database**: Redis + DynamoDB
+   - **Storage**: `dynamo` (primary) + `redis` (real-time)
    - **Internal APIs**: `/internal/messages/*`, `/internal/chat/*`
 
 6. **Content Service** (`content-service`)
    - **Subgraph**: File, Media, Upload types
    - **Port**: 3006
-   - **Database**: S3 + DynamoDB
+   - **Storage**: `dynamo` (metadata) + `s3` (files)
    - **Internal APIs**: `/internal/files/*`, `/internal/media/*`
 
 7. **Analytics Service** (`analytics-service`)
    - **Subgraph**: Event, Metric, Report types
    - **Port**: 3007
-   - **Database**: DynamoDB + RedShift
+   - **Storage**: `dynamo` (events) + `redshift` (warehouse)
    - **Internal APIs**: `/internal/events/*`, `/internal/metrics/*`
 
 8. **AI Service** (`ai-service`)
    - **Subgraph**: Recommendation, Personalization types
    - **Port**: 3008
-   - **Database**: Vector DB + DynamoDB
+   - **Storage**: `vector-db` (embeddings) + `dynamo` (metadata)
    - **Internal APIs**: `/internal/recommendations/*`, `/internal/ai/*`
 
 ## GraphQL Federation Implementation Patterns
@@ -275,13 +297,13 @@ GraphQL Query → AppSync → Multiple Lambda Resolvers → Multiple Internal Se
 ### Development Environment
 - **AppSync**: Development stage
 - **Services**: ECS Fargate (1 instance each)
-- **Databases**: Single instances
+- **Storage**: Single instances (postgres, dynamo, neo4j, redis)
 - **Network**: Single AZ
 
 ### Production Environment
 - **AppSync**: Production stage with caching
 - **Services**: ECS Fargate (2+ instances each)
-- **Databases**: Multi-AZ with read replicas
+- **Storage**: Multi-AZ with read replicas (postgres), auto-scaling (dynamo, redis)
 - **Network**: Multi-AZ deployment
 - **CDN**: CloudFront for static assets
 
