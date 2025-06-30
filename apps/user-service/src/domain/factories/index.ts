@@ -1,1 +1,1 @@
-export { UserFactory, CreateStudentProps, CreateTutorProps } from './user.factory';
+export { CreateStudentProps, CreateTutorProps, UserFactory } from './user.factory';
