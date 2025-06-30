@@ -18,72 +18,30 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@edtech/types": [
-        "libs/types/src"
-      ],
-      "@edtech/types/*": [
-        "libs/types/src/*"
-      ],
-      "@edtech/utils": [
-        "libs/utils/src"
-      ],
-      "@edtech/utils/*": [
-        "libs/utils/src/*"
-      ],
-      "@edtech/events": [
-        "libs/events/src"
-      ],
-      "@edtech/events/*": [
-        "libs/events/src/*"
-      ],
-      "@edtech/database": [
-        "libs/database/src"
-      ],
-      "@edtech/database/*": [
-        "libs/database/src/*"
-      ],
-      "@edtech/domain": [
-        "libs/domain/src"
-      ],
-      "@edtech/domain/*": [
-        "libs/domain/src/*"
-      ],
-      "@edtech/auth": [
-        "libs/auth/src"
-      ],
-      "@edtech/auth/*": [
-        "libs/auth/src/*"
-      ],
-      "@edtech/security": [
-        "libs/security/src"
-      ],
-      "@edtech/security/*": [
-        "libs/security/src/*"
-      ],
-      "@edtech/communication": [
-        "libs/communication/src"
-      ],
-      "@edtech/communication/*": [
-        "libs/communication/src/*"
-      ],
-      "@edtech/validation": [
-        "libs/validation/src"
-      ],
-      "@edtech/validation/*": [
-        "libs/validation/src/*"
-      ],
-      "@edtech/notifications": [
-        "libs/notifications/src"
-      ],
-      "@edtech/notifications/*": [
-        "libs/notifications/src/*"
-      ],
-      "@edtech/analytics": [
-        "libs/analytics/src"
-      ],
-      "@edtech/analytics/*": [
-        "libs/analytics/src/*"
-      ]
+      "@edtech/types": ["libs/types/src"],
+      "@edtech/types/*": ["libs/types/src/*"],
+      "@edtech/utils": ["libs/utils/src"],
+      "@edtech/utils/*": ["libs/utils/src/*"],
+      "@edtech/events": ["libs/events/src"],
+      "@edtech/events/*": ["libs/events/src/*"],
+      "@edtech/database": ["libs/database/src"],
+      "@edtech/database/*": ["libs/database/src/*"],
+      "@edtech/domain": ["libs/domain/src"],
+      "@edtech/domain/*": ["libs/domain/src/*"],
+      "@edtech/auth": ["libs/auth/src"],
+      "@edtech/auth/*": ["libs/auth/src/*"],
+      "@edtech/security": ["libs/security/src"],
+      "@edtech/security/*": ["libs/security/src/*"],
+      "@edtech/communication": ["libs/communication/src"],
+      "@edtech/communication/*": ["libs/communication/src/*"],
+      "@edtech/validation": ["libs/validation/src"],
+      "@edtech/validation/*": ["libs/validation/src/*"],
+      "@edtech/notifications": ["libs/notifications/src"],
+      "@edtech/notifications/*": ["libs/notifications/src/*"],
+      "@edtech/analytics": ["libs/analytics/src"],
+      "@edtech/analytics/*": ["libs/analytics/src/*"],
+      "@edtech/config": ["libs/config/src"],
+      "@edtech/config/*": ["libs/config/src/*"]
     }
   }
 }

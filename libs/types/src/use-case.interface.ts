@@ -1,14 +1,14 @@
 /**
  * Generic interface for use cases following the Use Case pattern.
  * Each use case represents a single business operation or workflow.
- * 
+ *
  * @template TRequest - The input type for the use case
  * @template TResponse - The output type for the use case
  */
 export interface IUseCase<TRequest = void, TResponse = void> {
   /**
    * Executes the use case with the provided request.
-   * 
+   *
    * @param request - The input data for the use case
    * @returns Promise resolving to the use case response
    */
@@ -73,4 +73,4 @@ export type UseCaseRequest<T> = T extends IUseCase<infer R, any> ? R : never;
 /**
  * Type utility for extracting response type from use case.
  */
-export type UseCaseResponse<T> = T extends IUseCase<any, infer R> ? R : never; 
+export type UseCaseResponse<T> = T extends IUseCase<any, infer R> ? R : never;

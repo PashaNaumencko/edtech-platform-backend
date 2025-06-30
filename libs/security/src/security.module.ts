@@ -5,4 +5,4 @@ import { SecurityService } from './security.service';
   providers: [SecurityService],
   exports: [SecurityService],
 })
-export class SecurityModule {} 
+export class SecurityModule {}

@@ -17,10 +17,11 @@ This document provides **simplified, practical** guidelines for implementing arc
 ## 🗄️ Database Naming & Infrastructure Conventions
 
 ### Infrastructure Naming Philosophy
+
 We name infrastructure components **as they actually are**, not with generic abstractions:
 
 - ✅ **postgres** (PostgreSQL databases)
-- ✅ **dynamo** (DynamoDB tables)  
+- ✅ **dynamo** (DynamoDB tables)
 - ✅ **neo4j** (Neo4j graph databases)
 - ✅ **redis** (Redis cache instances)
 - ❌ ~~database~~ (too generic)
@@ -29,16 +30,16 @@ We name infrastructure components **as they actually are**, not with generic abs
 
 ### Service Database Allocation
 
-| Service | Primary Storage | Secondary Storage | Use Case |
-|---------|----------------|-------------------|----------|
-| **user-service** | `postgres` | `redis` (sessions) | User profiles, authentication |
-| **learning-service** | `postgres` | `redis` (cache) | Courses, lessons, progress |
-| **tutor-matching-service** | `neo4j` | `postgres` (profiles) | Graph relationships, availability |
-| **payment-service** | `postgres` | - | Transactions, billing |
-| **communication-service** | `dynamo` | `redis` (real-time) | Messages, chat history |
-| **content-service** | `dynamo` | `s3` (files) | File metadata, media |
-| **analytics-service** | `dynamo` | `redshift` (warehouse) | Events, metrics, reports |
-| **ai-service** | `vector-db` | `dynamo` (metadata) | Embeddings, recommendations |
+| Service                    | Primary Storage | Secondary Storage      | Use Case                          |
+| -------------------------- | --------------- | ---------------------- | --------------------------------- |
+| **user-service**           | `postgres`      | `redis` (sessions)     | User profiles, authentication     |
+| **learning-service**       | `postgres`      | `redis` (cache)        | Courses, lessons, progress        |
+| **tutor-matching-service** | `neo4j`         | `postgres` (profiles)  | Graph relationships, availability |
+| **payment-service**        | `postgres`      | -                      | Transactions, billing             |
+| **communication-service**  | `dynamo`        | `redis` (real-time)    | Messages, chat history            |
+| **content-service**        | `dynamo`        | `s3` (files)           | File metadata, media              |
+| **analytics-service**      | `dynamo`        | `redshift` (warehouse) | Events, metrics, reports          |
+| **ai-service**             | `vector-db`     | `dynamo` (metadata)    | Embeddings, recommendations       |
 
 ### Folder Structure Examples
 
@@ -99,11 +100,444 @@ export const dynamoConfig = {
 };
 ```
 
+## 🔧 Shared Configuration Library (`@edtech/config`)
+
+### Configuration Philosophy
+
+We use a **shared configuration library** that provides:
+
+- ✅ **Type-safe configuration** with TypeScript interfaces
+- ✅ **Zod validation** for runtime environment variable validation
+- ✅ **Reusable configuration creators** for all microservices
+- ✅ **Consistent configuration patterns** across the platform
+- ✅ **Service-specific configuration** extending base configuration
+
+### Core Components
+
+```typescript
+// libs/config/src/types/configuration.types.ts
+export interface BaseAppConfiguration {
+  port: number;
+  corsOrigins: string[];
+  environment: 'development' | 'staging' | 'production' | 'test';
+  version: string;
+}
+
+export interface PostgresConfiguration {
+  type: 'postgres';
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  entities: string[];
+  migrations: string[];
+  subscribers: string[];
+  synchronize: boolean;
+  logging: boolean;
+  migrationsRun: boolean;
+  ssl: boolean | { rejectUnauthorized: boolean };
+}
+
+export interface RedisConfiguration {
+  host: string;
+  port: number;
+  password?: string;
+  db: number;
+  ttl: number;
+}
+
+// Service-specific configuration interfaces
+export interface UserServiceConfiguration {
+  app: BaseAppConfiguration;
+  postgres: PostgresConfiguration;
+  redis: RedisConfiguration;
+  cognito: CognitoConfiguration;
+  s3: S3Configuration;
+  email: EmailConfiguration;
+  eventBridge: EventBridgeConfiguration;
+}
+```
+
+### Zod Validation Schemas
+
+```typescript
+// libs/config/src/schemas/validation.schemas.ts
+import { z } from 'zod';
+
+export const BaseEnvironmentSchema = z.object({
+  NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  CORS_ORIGINS: z.string().default('http://localhost:3000'),
+});
+
+export const PostgresEnvironmentSchema = z.object({
+  POSTGRES_HOST: z.string().default('localhost'),
+  POSTGRES_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
+  POSTGRES_USER: z.string().default('postgres'),
+  POSTGRES_PASSWORD: z.string().default('postgres'),
+  POSTGRES_DB: z.string().min(1),
+});
+
+// Service-specific schemas (compose base + service-specific needs)
+export const UserServiceEnvironmentSchema = BaseEnvironmentSchema.merge(PostgresEnvironmentSchema)
+  .merge(RedisEnvironmentSchema)
+  .merge(CognitoEnvironmentSchema);
+```
+
+### Configuration Creators
+
+```typescript
+// libs/config/src/creators/base-config.creators.ts
+import { registerAs } from '@nestjs/config';
+
+// Simple, direct configuration creators - no nested functions!
+export const createBaseAppConfig = () =>
+  registerAs(
+    'app',
+    (): BaseAppConfiguration => ({
+      port: parseInt(process.env.PORT || '3001', 10),
+      corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+      environment: (process.env.NODE_ENV as any) || 'development',
+      version: '1.0.0',
+    })
+  );
+
+// PostgreSQL Configuration - Takes service name parameter
+export const createPostgresConfig = (serviceName: string) =>
+  registerAs('postgres', (): PostgresConfiguration => {
+    const environment = process.env.NODE_ENV || 'development';
+    const isDevelopment = environment === 'development';
+    const isProduction = environment === 'production';
+
+    return {
+      type: 'postgres' as const,
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+      username: process.env.POSTGRES_USER || 'postgres',
+      password: process.env.POSTGRES_PASSWORD || 'postgres',
+      database: process.env.POSTGRES_DB || `edtech_${serviceName}`,
+      entities: [`${__dirname}/../../**/*.orm-entity{.ts,.js}`],
+      migrations: [`${__dirname}/../../infrastructure/postgres/migrations/*{.ts,.js}`],
+      subscribers: [`${__dirname}/../../**/*.subscriber{.ts,.js}`],
+      synchronize: isDevelopment,
+      logging: isDevelopment,
+      migrationsRun: !isDevelopment,
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
+    };
+  });
+
+// Simple Redis Configuration
+export const createRedisConfig = () =>
+  registerAs(
+    'redis',
+    (): RedisConfiguration => ({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+      ttl: parseInt(process.env.REDIS_TTL || '3600', 10),
+    })
+  );
+
+// Simple S3 Configuration
+export const createS3Config = () =>
+  registerAs(
+    's3',
+    (): S3Configuration => ({
+      region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
+      bucketName: process.env.S3_BUCKET_NAME || '',
+    })
+  );
+
+export const createZodValidation = (schema: z.ZodSchema) => ({
+  validate: (config: Record<string, unknown>): Record<string, unknown> => {
+    const result = schema.safeParse(config);
+    if (!result.success) {
+      const errors = result.error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join(', ');
+      throw new Error(`Config validation error: ${errors}`);
+    }
+    return result.data;
+  },
+});
+```
+
+### Base Configuration Service
+
+```typescript
+// libs/config/src/services/base-configuration.service.ts
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export abstract class BaseConfigurationService<T> {
+  constructor(protected readonly configService: ConfigService) {}
+
+  // Base App Configuration - Available to all services
+  get app(): BaseAppConfiguration {
+    return this.configService.get<BaseAppConfiguration>('app')!;
+  }
+
+  get port(): number {
+    return this.app.port;
+  }
+
+  get environment(): 'development' | 'staging' | 'production' | 'test' {
+    return this.app.environment;
+  }
+
+  get corsOrigins(): string[] {
+    return this.app.corsOrigins;
+  }
+
+  get isDevelopment(): boolean {
+    return this.app.environment === 'development';
+  }
+
+  get isProduction(): boolean {
+    return this.app.environment === 'production';
+  }
+
+  // Service-specific configuration - implemented by subclasses
+  abstract getServiceConfig(): T;
+}
+```
+
+### Service-Specific Implementation
+
+```typescript
+// apps/user-service/src/config/user-service.config-creators.ts
+import {
+  createBaseAppConfig,
+  createPostgresConfig,
+  createRedisConfig,
+  createCognitoConfig,
+  createS3Config,
+  createEmailConfig,
+  createEventBridgeConfig,
+} from '@edtech/config';
+
+// User Service Configuration Creators - Simple function calls!
+export const createUserServiceConfigs = () => [
+  createBaseAppConfig(),
+  createPostgresConfig('user_service'),
+  createRedisConfig(),
+  createCognitoConfig(),
+  createS3Config(),
+  createEmailConfig(),
+  createEventBridgeConfig(),
+];
+```
+
+```typescript
+// apps/user-service/src/config/user-service.environment.schema.ts
+import {
+  BaseEnvironmentSchema,
+  PostgresEnvironmentSchema,
+  RedisEnvironmentSchema,
+  AwsEnvironmentSchema,
+  CognitoEnvironmentSchema,
+  S3EnvironmentSchema,
+  EmailEnvironmentSchema,
+  EventBridgeEnvironmentSchema,
+} from '@edtech/config';
+
+// User Service Environment Schema - Composes all required schemas
+export const UserServiceEnvironmentSchema = BaseEnvironmentSchema.merge(PostgresEnvironmentSchema)
+  .merge(RedisEnvironmentSchema)
+  .merge(AwsEnvironmentSchema)
+  .merge(CognitoEnvironmentSchema)
+  .merge(S3EnvironmentSchema)
+  .merge(EmailEnvironmentSchema)
+  .merge(EventBridgeEnvironmentSchema);
+```
+
+```typescript
+// apps/user-service/src/config/user-service.configuration.ts
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  BaseConfigurationService,
+  UserServiceConfiguration,
+  PostgresConfiguration,
+  RedisConfiguration,
+} from '@edtech/config';
+
+@Injectable()
+export class UserServiceConfigurationService extends BaseConfigurationService<UserServiceConfiguration> {
+  constructor(configService: ConfigService) {
+    super(configService);
+  }
+
+  getServiceConfig(): UserServiceConfiguration {
+    return {
+      app: this.app,
+      postgres: this.postgres,
+      redis: this.redis,
+      cognito: this.cognito,
+      s3: this.s3,
+      email: this.email,
+      eventBridge: this.eventBridge,
+    };
+  }
+
+  get postgres(): PostgresConfiguration {
+    return this.configService.get<PostgresConfiguration>('postgres')!;
+  }
+
+  get redis(): RedisConfiguration {
+    return this.configService.get<RedisConfiguration>('redis')!;
+  }
+}
+```
+
+### Module Setup with Service-Specific Configuration
+
+```typescript
+// apps/user-service/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+
+// Service-specific Configuration
+import { createUserServiceConfigs } from './config/user-service.config-creators';
+import { UserServiceEnvironmentSchema } from './config/user-service.environment.schema';
+import { UserServiceConfigurationService } from './config/user-service.configuration';
+
+// Shared Configuration Utilities
+import { createZodValidation } from '@edtech/config';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: createUserServiceConfigs(),
+      ...createZodValidation(UserServiceEnvironmentSchema),
+    }),
+    // ... other modules
+  ],
+  providers: [UserServiceConfigurationService],
+  exports: [UserServiceConfigurationService],
+})
+export class AppModule {}
+```
+
+### Different Service Examples
+
+**Learning Service (PostgreSQL + Redis only):**
+
+```typescript
+// apps/learning-service/src/config/learning-service.config-creators.ts
+import { createBaseAppConfig, createPostgresConfig, createRedisConfig } from '@edtech/config';
+
+export const createLearningServiceConfigs = () => [
+  createBaseAppConfig(),
+  createPostgresConfig('learning_service'),
+  createRedisConfig(),
+];
+```
+
+**Payment Service (PostgreSQL only):**
+
+```typescript
+// apps/payment-service/src/config/payment-service.config-creators.ts
+import { createBaseAppConfig, createPostgresConfig } from '@edtech/config';
+
+export const createPaymentServiceConfigs = () => [
+  createBaseAppConfig(),
+  createPostgresConfig('payment_service'),
+];
+```
+
+### Environment Variables
+
+```bash
+# .env.development
+NODE_ENV=development
+PORT=3001
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+
+# PostgreSQL
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=edtech_user_service
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+REDIS_TTL=3600
+```
+
+### Benefits of Modular Configuration
+
+#### **🏗️ Architecture Benefits**
+
+1. **Separation of Concerns**:
+   - Shared library contains only reusable components
+   - Services own their specific configuration logic
+   - Clear boundary between generic and service-specific code
+
+2. **Flexibility**:
+   - Services can mix and match only the configuration they need
+   - Easy to add new database types or AWS services
+   - Services can customize configuration logic while using shared base
+
+3. **Maintainability**:
+   - Configuration changes in one service don't affect others
+   - Shared base factories ensure consistency across services
+   - Easy to understand what each service needs
+
+#### **🎯 Development Benefits**
+
+1. **Type Safety**: Full TypeScript support with compile-time checking
+2. **Runtime Validation**: Zod ensures environment variables are valid at startup
+3. **Service Autonomy**: Each service manages its own configuration lifecycle
+4. **Reusability**: Base factories prevent code duplication across services
+5. **Scalability**: Easy to add new services with different database combinations
+
+#### **📋 Configuration Patterns by Service Type**
+
+| Service Type          | Database Combination                    | Example                |
+| --------------------- | --------------------------------------- | ---------------------- |
+| **Full-featured**     | postgres + redis + cognito + s3 + email | user-service           |
+| **Course management** | postgres + redis                        | learning-service       |
+| **Transactional**     | postgres only                           | payment-service        |
+| **Real-time**         | dynamo + redis                          | communication-service  |
+| **File storage**      | dynamo + s3                             | content-service        |
+| **Analytics**         | dynamo + redshift                       | analytics-service      |
+| **Graph-based**       | neo4j + postgres                        | tutor-matching-service |
+| **AI/ML**             | vector-db + dynamo                      | ai-service             |
+
+#### **🔧 Implementation Summary**
+
+**Shared Library (`@edtech/config`)** contains:
+
+- Base types and interfaces
+- Base validation schemas (Zod)
+- Configuration factories (reusable functions)
+- Base configuration service class
+- Utility functions
+
+**Each Service** contains:
+
+- Service-specific configuration creators
+- Service-specific environment schema composition
+- Service-specific configuration service
+- Service-specific module setup
+
+This approach ensures maximum reusability while maintaining service autonomy and clear separation of concerns.
+
 ## 🏗️ 1. Domain-Driven Design (DDD) + CQRS Pattern
 
 ### 1.1 Simplified Domain Model
 
 #### Aggregate Root with NestJS/CQRS
+
 ```typescript
 // Learning Service - Course Aggregate
 import { AggregateRoot } from '@nestjs/cqrs';
@@ -140,12 +574,14 @@ export class Course extends AggregateRoot {
     );
 
     // Fire domain event using NestJS/CQRS
-    course.apply(new CourseCreatedEvent({
-      courseId: course.id,
-      tutorId: props.tutorId,
-      title: props.title,
-      subject: props.subject,
-    }));
+    course.apply(
+      new CourseCreatedEvent({
+        courseId: course.id,
+        tutorId: props.tutorId,
+        title: props.title,
+        subject: props.subject,
+      })
+    );
 
     return course;
   }
@@ -162,56 +598,68 @@ export class Course extends AggregateRoot {
     this.enrollments.push(studentId);
 
     // Fire domain event
-    this.apply(new StudentEnrolledEvent({
-      courseId: this.id,
-      studentId,
-      enrolledAt: new Date(),
-      paymentId,
-    }));
+    this.apply(
+      new StudentEnrolledEvent({
+        courseId: this.id,
+        studentId,
+        enrolledAt: new Date(),
+        paymentId,
+      })
+    );
   }
 
   publish(): void {
     this.status = 'PUBLISHED';
-    this.apply(new CoursePublishedEvent({
-      courseId: this.id,
-      publishedAt: new Date(),
-    }));
+    this.apply(
+      new CoursePublishedEvent({
+        courseId: this.id,
+        publishedAt: new Date(),
+      })
+    );
   }
 }
 ```
 
 #### Simple Domain Events
+
 ```typescript
 // Domain Events (no complex inheritance)
 export class CourseCreatedEvent {
-  constructor(public readonly data: {
-    courseId: string;
-    tutorId: string;
-    title: string;
-    subject: string;
-  }) {}
+  constructor(
+    public readonly data: {
+      courseId: string;
+      tutorId: string;
+      title: string;
+      subject: string;
+    }
+  ) {}
 }
 
 export class StudentEnrolledEvent {
-  constructor(public readonly data: {
-    courseId: string;
-    studentId: string;
-    enrolledAt: Date;
-    paymentId: string;
-  }) {}
+  constructor(
+    public readonly data: {
+      courseId: string;
+      studentId: string;
+      enrolledAt: Date;
+      paymentId: string;
+    }
+  ) {}
 }
 
 export class CoursePublishedEvent {
-  constructor(public readonly data: {
-    courseId: string;
-    publishedAt: Date;
-  }) {}
+  constructor(
+    public readonly data: {
+      courseId: string;
+      publishedAt: Date;
+    }
+  ) {}
 }
 ```
 
 ### 1.2 CQRS with NestJS
 
 #### Commands and Command Handlers
+
 ```typescript
 // Commands
 export class CreateCourseCommand {
@@ -257,12 +705,10 @@ export class EnrollStudentHandler implements ICommandHandler<EnrollStudentComman
 
   async execute(command: EnrollStudentCommand): Promise<void> {
     // Use mergeObjectContext to load aggregate
-    const course = this.mergeObjectContext(
-      await this.courseRepository.findById(command.courseId)
-    );
+    const course = this.mergeObjectContext(await this.courseRepository.findById(command.courseId));
 
     course.enrollStudent(command.studentId, command.paymentId);
-    
+
     await this.courseRepository.save(course);
     course.commit(); // Publishes events automatically
   }
@@ -270,6 +716,7 @@ export class EnrollStudentHandler implements ICommandHandler<EnrollStudentComman
 ```
 
 #### Queries (Simplified)
+
 ```typescript
 // Query DTOs
 export class GetCourseByIdQuery {
@@ -299,16 +746,13 @@ export class GetCoursesBySubjectHandler implements IQueryHandler<GetCoursesBySub
   constructor(private readonly courseRepository: CourseRepository) {}
 
   async execute(query: GetCoursesBySubjectQuery): Promise<Course[]> {
-    return this.courseRepository.findBySubject(
-      query.subject,
-      query.page,
-      query.limit
-    );
+    return this.courseRepository.findBySubject(query.subject, query.page, query.limit);
   }
 }
 ```
 
 #### Event Handlers (Application Layer)
+
 ```typescript
 // Event handlers in application layer
 @EventsHandler(CourseCreatedEvent)
@@ -320,10 +764,7 @@ export class CourseCreatedHandler implements IEventHandler<CourseCreatedEvent> {
 
   async handle(event: CourseCreatedEvent): Promise<void> {
     // Send notification to tutor
-    await this.notificationService.notifyCourseCreated(
-      event.data.tutorId,
-      event.data.courseId
-    );
+    await this.notificationService.notifyCourseCreated(event.data.tutorId, event.data.courseId);
 
     // Track analytics
     await this.analyticsService.trackEvent('course.created', event.data);
@@ -339,10 +780,7 @@ export class StudentEnrolledHandler implements IEventHandler<StudentEnrolledEven
 
   async handle(event: StudentEnrolledEvent): Promise<void> {
     // Create chat session between student and tutor
-    await this.chatService.createCourseSession(
-      event.data.courseId,
-      event.data.studentId
-    );
+    await this.chatService.createCourseSession(event.data.courseId, event.data.studentId);
 
     // Send enrollment confirmation
     await this.notificationService.sendEnrollmentConfirmation(
@@ -371,7 +809,7 @@ export const USER_PATTERNS = {
     GET_USER_BY_EMAIL: 'user.get_by_email',
     VERIFY_CREDENTIALS: 'user.verify_credentials',
     CHECK_USER_EXISTS: 'user.check_exists',
-  }
+  },
 } as const;
 
 // libs/patterns/src/course.patterns.ts
@@ -387,7 +825,7 @@ export const COURSE_PATTERNS = {
     GET_COURSES_BY_SUBJECT: 'course.get_by_subject',
     ENROLL_STUDENT: 'course.enroll_student',
     VERIFY_ENROLLMENT: 'course.verify_enrollment',
-  }
+  },
 } as const;
 
 // libs/patterns/src/payment.patterns.ts
@@ -403,7 +841,7 @@ export const PAYMENT_PATTERNS = {
     VERIFY_PAYMENT: 'payment.verify',
     INITIATE_REFUND: 'payment.refund',
     GET_PAYMENT_STATUS: 'payment.get_status',
-  }
+  },
 } as const;
 
 // libs/patterns/src/index.ts
@@ -413,10 +851,13 @@ export * from './payment.patterns';
 export * from './review.patterns';
 
 // Type-safe pattern usage
-export type UserEventPattern = typeof USER_PATTERNS.EVENTS[keyof typeof USER_PATTERNS.EVENTS];
-export type UserMessagePattern = typeof USER_PATTERNS.MESSAGES[keyof typeof USER_PATTERNS.MESSAGES];
-export type CourseEventPattern = typeof COURSE_PATTERNS.EVENTS[keyof typeof COURSE_PATTERNS.EVENTS];
-export type CourseMessagePattern = typeof COURSE_PATTERNS.MESSAGES[keyof typeof COURSE_PATTERNS.MESSAGES];
+export type UserEventPattern = (typeof USER_PATTERNS.EVENTS)[keyof typeof USER_PATTERNS.EVENTS];
+export type UserMessagePattern =
+  (typeof USER_PATTERNS.MESSAGES)[keyof typeof USER_PATTERNS.MESSAGES];
+export type CourseEventPattern =
+  (typeof COURSE_PATTERNS.EVENTS)[keyof typeof COURSE_PATTERNS.EVENTS];
+export type CourseMessagePattern =
+  (typeof COURSE_PATTERNS.MESSAGES)[keyof typeof COURSE_PATTERNS.MESSAGES];
 ```
 
 ### 2.4 Shared Saga Components
@@ -439,7 +880,7 @@ export abstract class BaseSaga {
 
   protected handleSagaError(sagaId: string, error: Error): Observable<ICommand> {
     console.error(`Saga ${sagaId} failed:`, error);
-    return new Observable<ICommand>((observer) => {
+    return new Observable<ICommand>(observer => {
       observer.next(new CancelSagaCommand(sagaId, error.message));
       observer.complete();
     });
@@ -528,11 +969,13 @@ import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge
 export class EventBridgeTransport extends CustomTransportStrategy {
   private eventBridgeClient: EventBridgeClient;
 
-  constructor(private readonly options: {
-    region: string;
-    eventBusName: string;
-    source: string;
-  }) {
+  constructor(
+    private readonly options: {
+      region: string;
+      eventBusName: string;
+      source: string;
+    }
+  ) {
     super();
     this.eventBridgeClient = new EventBridgeClient({ region: options.region });
   }
@@ -553,16 +996,14 @@ export class EventBridgeTransport extends CustomTransportStrategy {
       EventBusName: this.options.eventBusName,
     };
 
-    await this.eventBridgeClient.send(
-      new PutEventsCommand({ Entries: [eventEntry] })
-    );
+    await this.eventBridgeClient.send(new PutEventsCommand({ Entries: [eventEntry] }));
   }
 }
 
 // Usage in main.ts
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   app.connectMicroservice({
     strategy: new EventBridgeTransport({
       region: process.env.AWS_REGION,
@@ -595,9 +1036,7 @@ export class UserEventsController {
   // Event Pattern - Fire and forget (using shared patterns)
   @EventPattern(USER_PATTERNS.EVENTS.USER_CREATED)
   async handleUserCreated(@Payload() data: any): Promise<void> {
-    await this.commandBus.execute(
-      new ProcessUserCreatedCommand(data.userId, data.email)
-    );
+    await this.commandBus.execute(new ProcessUserCreatedCommand(data.userId, data.email));
   }
 
   @EventPattern(PAYMENT_PATTERNS.EVENTS.PAYMENT_COMPLETED)
@@ -660,7 +1099,7 @@ export class InterServiceClient {
   async publishEvent(serviceName: string, pattern: string, data: any): Promise<void> {
     const client = this.clients.get(serviceName);
     if (!client) throw new Error(`Service ${serviceName} not found`);
-    
+
     await client.emit(pattern, data).toPromise();
   }
 
@@ -668,7 +1107,7 @@ export class InterServiceClient {
   async sendRequest<T>(serviceName: string, pattern: string, data: any): Promise<T> {
     const client = this.clients.get(serviceName);
     if (!client) throw new Error(`Service ${serviceName} not found`);
-    
+
     return client.send<T>(pattern, data).toPromise();
   }
 }
@@ -680,20 +1119,17 @@ export class PaymentService {
 
   async processPayment(paymentData: any): Promise<void> {
     // Sync call to verify user
-    const user = await this.interServiceClient.sendRequest(
-      'user-service',
-      'user.get_by_id',
-      { userId: paymentData.userId }
-    );
+    const user = await this.interServiceClient.sendRequest('user-service', 'user.get_by_id', {
+      userId: paymentData.userId,
+    });
 
     // Process payment logic...
 
     // Async notification
-    await this.interServiceClient.publishEvent(
-      'user-service',
-      'payment.completed',
-      { userId: user.id, amount: paymentData.amount }
-    );
+    await this.interServiceClient.publishEvent('user-service', 'payment.completed', {
+      userId: user.id,
+      amount: paymentData.amount,
+    });
   }
 }
 ```
@@ -839,7 +1275,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
   courseEnrollment = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(CourseEnrollmentRequestedEvent),
-      switchMap((event) => this.handleEnrollmentRequested(event)),
+      switchMap(event => this.handleEnrollmentRequested(event)),
       catchError((error, caught) => {
         const sagaId = this.generateSagaId();
         return this.handleSagaError(sagaId, error);
@@ -851,12 +1287,15 @@ export class CourseEnrollmentSaga extends BaseSaga {
   paymentProcessed = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(PaymentProcessedEvent),
-      map((event) => new CreateEnrollmentCommand(
-        event.sagaId,
-        event.courseId,
-        event.studentId,
-        event.paymentId
-      ))
+      map(
+        event =>
+          new CreateEnrollmentCommand(
+            event.sagaId,
+            event.courseId,
+            event.studentId,
+            event.paymentId
+          )
+      )
     );
   };
 
@@ -864,7 +1303,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
   paymentFailed = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(PaymentFailedEvent),
-      map((event) => new CancelSagaCommand(event.sagaId, event.reason))
+      map(event => new CancelSagaCommand(event.sagaId, event.reason))
     );
   };
 
@@ -872,10 +1311,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
   enrollmentCompleted = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(EnrollmentCompletedEvent),
-      map((event) => new SendEnrollmentNotificationCommand(
-        event.studentId,
-        event.courseId
-      ))
+      map(event => new SendEnrollmentNotificationCommand(event.studentId, event.courseId))
     );
   };
 
@@ -883,7 +1319,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
     event: CourseEnrollmentRequestedEvent
   ): Promise<Observable<ICommand>> {
     const sagaId = this.generateSagaId();
-    
+
     // Start the payment process using shared patterns
     await this.interServiceClient.publishEvent(
       'payment-service',
@@ -896,12 +1332,14 @@ export class CourseEnrollmentSaga extends BaseSaga {
       }
     );
 
-    return new Observable<ICommand>((observer) => {
-      observer.next(this.createSagaTrackingCommand(sagaId, 'PAYMENT_PENDING', {
-        courseId: event.courseId,
-        studentId: event.studentId,
-        amount: event.amount,
-      }));
+    return new Observable<ICommand>(observer => {
+      observer.next(
+        this.createSagaTrackingCommand(sagaId, 'PAYMENT_PENDING', {
+          courseId: event.courseId,
+          studentId: event.studentId,
+          amount: event.amount,
+        })
+      );
       observer.complete();
     });
   }
@@ -977,7 +1415,7 @@ export class TrackSagaHandler implements ICommandHandler<TrackSagaCommand> {
 
   async execute(command: TrackSagaCommand): Promise<void> {
     let sagaState = await this.sagaRepository.findById(command.sagaId);
-    
+
     if (!sagaState) {
       sagaState = new SagaState(
         command.sagaId,
@@ -1016,7 +1454,6 @@ export class CreateEnrollmentHandler implements ICommandHandler<CreateEnrollment
       await this.sagaRepository.save(sagaState);
 
       course.commit();
-
     } catch (error) {
       // Publish compensation event
       const sagaState = await this.sagaRepository.findById(command.sagaId);
@@ -1180,10 +1617,10 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand> {
 
     // Convert to entity and save directly
     await this.userRepository.save(user.toEntity());
-    
+
     // Cache the new user
     await this.cacheService.set(`user:${user.id}`, user, 3600);
-    
+
     // Commit domain events
     user.commit();
   }
@@ -1199,23 +1636,23 @@ export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand> {
 
   async execute(command: UpdateUserCommand): Promise<void> {
     // Fetch entity from database
-    const userEntity = await this.userRepository.findOne({ 
-      where: { id: command.userId } 
+    const userEntity = await this.userRepository.findOne({
+      where: { id: command.userId },
     });
-    
+
     if (!userEntity) {
       throw new Error('User not found');
     }
 
     // Convert to domain object and merge with context
     const user = this.mergeObjectContext(User.fromEntity(userEntity));
-    
+
     // Perform domain operations
     user.updateProfile(command.name, command.email);
-    
+
     // Save back to database
     await this.userRepository.save(user.toEntity());
-    
+
     // Commit events
     user.commit();
   }
@@ -1270,20 +1707,20 @@ export class GetUserByIdHandler implements IQueryHandler<GetUserByIdQuery> {
     }
 
     // Fetch from database
-    const userEntity = await this.userRepository.findOne({ 
-      where: { id: query.userId } 
+    const userEntity = await this.userRepository.findOne({
+      where: { id: query.userId },
     });
-    
+
     if (!userEntity) {
       return null;
     }
 
     // Convert to domain object directly
     const user = User.fromEntity(userEntity);
-    
+
     // Cache the result
     await this.cacheService.set(`user:${user.id}`, user, 3600);
-    
+
     return user;
   }
 }
@@ -1318,17 +1755,19 @@ export class GetUserWithProfileHandler implements IQueryHandler<GetUserWithProfi
     private readonly userProfileRepository: Repository<UserProfileEntity>
   ) {}
 
-  async execute(query: GetUserWithProfileQuery): Promise<{ user: User; profile: UserProfile | null }> {
-    const userEntity = await this.userRepository.findOne({ 
-      where: { id: query.userId } 
+  async execute(
+    query: GetUserWithProfileQuery
+  ): Promise<{ user: User; profile: UserProfile | null }> {
+    const userEntity = await this.userRepository.findOne({
+      where: { id: query.userId },
     });
-    
+
     if (!userEntity) {
       throw new Error('User not found');
     }
 
     const profileEntity = await this.userProfileRepository.findOne({
-      where: { userId: query.userId }
+      where: { userId: query.userId },
     });
 
     return {
@@ -1361,10 +1800,7 @@ import { UserProfileEntity } from './infrastructure/postgres/entities/user-profi
     // Import entities directly
     TypeOrmModule.forFeature([UserEntity, UserProfileEntity]),
   ],
-  controllers: [
-    UserController,
-    UserEventsController,
-  ],
+  controllers: [UserController, UserEventsController],
   providers: [
     // Command handlers
     CreateUserHandler,
@@ -1453,6 +1889,7 @@ build({
 ### 6.2 When to Use Lambda Functions
 
 **✅ Good Use Cases for Lambda:**
+
 1. **Event Processing**: Handle EventBridge events for notifications, cleanup tasks
 2. **Scheduled Tasks**: Cron-like jobs for data cleanup, report generation
 3. **File Processing**: Process uploaded files, generate thumbnails, convert formats
@@ -1460,6 +1897,7 @@ build({
 5. **Background Jobs**: Send emails, process analytics, generate reports
 
 **❌ Avoid Lambda for:**
+
 1. **Main API Endpoints**: Use ECS/Fargate services for consistent performance
 2. **Real-time Communication**: WebSocket connections, live video calls
 3. **Long-running Processes**: Anything over 15 minutes
@@ -1491,6 +1929,7 @@ export const processUploadedFile = async (event: S3Event): Promise<void> => {
 ### 7.1 Targeted Caching Use Cases
 
 **✅ Cache These:**
+
 1. **User Sessions**: Authentication tokens, user preferences
 2. **Frequent Queries**: Popular courses, tutor profiles
 3. **Computed Data**: Aggregated ratings, course statistics
@@ -1498,6 +1937,7 @@ export const processUploadedFile = async (event: S3Event): Promise<void> => {
 5. **Search Results**: Course search results for popular queries
 
 **❌ Don't Cache These:**
+
 1. **Transactional Data**: Payments, enrollments, sensitive user data
 2. **Frequently Changing Data**: Live chat messages, real-time notifications
 3. **Large Objects**: Video files, large documents
@@ -1518,7 +1958,7 @@ export class GetCoursesBySubjectHandler implements IQueryHandler<GetCoursesBySub
 
   async execute(query: GetCoursesBySubjectQuery): Promise<Course[]> {
     const cacheKey = `courses:subject:${query.subject}:page:${query.page}`;
-    
+
     // Try cache first
     const cached = await this.cacheService.get<Course[]>(cacheKey);
     if (cached) {
@@ -1534,7 +1974,7 @@ export class GetCoursesBySubjectHandler implements IQueryHandler<GetCoursesBySub
 
     // Cache for 30 minutes
     await this.cacheService.set(cacheKey, courses, 1800);
-    
+
     return courses;
   }
 }
@@ -1550,21 +1990,19 @@ export class UpdateCourseHandler implements ICommandHandler<UpdateCourseCommand>
   ) {}
 
   async execute(command: UpdateCourseCommand): Promise<void> {
-    const course = this.mergeObjectContext(
-      await this.courseRepository.findById(command.courseId)
-    );
+    const course = this.mergeObjectContext(await this.courseRepository.findById(command.courseId));
 
     course.updateDetails(command.title, command.description, command.price);
-    
+
     // Save to database
     await this.courseRepository.save(course);
-    
+
     // Update cache immediately
     await this.cacheService.set(`course:${course.id}`, course, 3600);
-    
+
     // Invalidate related caches
     await this.cacheService.delete(`courses:subject:${course.subject}:*`);
-    
+
     course.commit();
   }
 }
@@ -1577,14 +2015,18 @@ export class RateLimitService {
     private readonly cacheService: ICacheService
   ) {}
 
-  async checkRateLimit(userId: string, endpoint: string, maxRequests: number = 100): Promise<boolean> {
+  async checkRateLimit(
+    userId: string,
+    endpoint: string,
+    maxRequests: number = 100
+  ): Promise<boolean> {
     const key = `ratelimit:${userId}:${endpoint}`;
-    const current = await this.cacheService.get<number>(key) || 0;
-    
+    const current = (await this.cacheService.get<number>(key)) || 0;
+
     if (current >= maxRequests) {
       return false; // Rate limit exceeded
     }
-    
+
     await this.cacheService.set(key, current + 1, 3600); // 1 hour window
     return true;
   }
@@ -1598,32 +2040,38 @@ export class RateLimitService {
 ```typescript
 // Local Events (handled within service via NestJS/CQRS)
 export class UserCreatedEvent {
-  constructor(public readonly data: {
-    userId: string;
-    email: string;
-    role: string;
-    createdAt: Date;
-  }) {}
+  constructor(
+    public readonly data: {
+      userId: string;
+      email: string;
+      role: string;
+      createdAt: Date;
+    }
+  ) {}
 }
 
 export class UserUpdatedEvent {
-  constructor(public readonly data: {
-    userId: string;
-    changes: Record<string, any>;
-    updatedAt: Date;
-  }) {}
+  constructor(
+    public readonly data: {
+      userId: string;
+      changes: Record<string, any>;
+      updatedAt: Date;
+    }
+  ) {}
 }
 
 // Integration Events (for EventBridge)
 export class UserCreatedIntegrationEvent {
-  constructor(public readonly data: {
-    eventId: string;
-    userId: string;
-    email: string;
-    role: string;
-    source: string;
-    timestamp: string;
-  }) {}
+  constructor(
+    public readonly data: {
+      eventId: string;
+      userId: string;
+      email: string;
+      role: string;
+      source: string;
+      timestamp: string;
+    }
+  ) {}
 
   toEventBridge() {
     return {
@@ -1709,7 +2157,7 @@ export class UserEventListener {
   // This would be triggered by EventBridge in the receiving service
   async handleUserCreated(event: any): Promise<void> {
     const userData = JSON.parse(event.Detail);
-    
+
     // Handle the integration event
     await this.notificationService.sendWelcomeNotification(userData.userId);
   }
@@ -1813,23 +2261,27 @@ export class Course extends AggregateRoot {
   }
 
   enrollStudent(studentId: string, paymentId: string): void {
-    this.apply(new StudentEnrolledEvent({
-      courseId: this.id,
-      studentId,
-      paymentId,
-      enrolledAt: new Date(),
-    }));
+    this.apply(
+      new StudentEnrolledEvent({
+        courseId: this.id,
+        studentId,
+        paymentId,
+        enrolledAt: new Date(),
+      })
+    );
   }
 
   updateDetails(title: string, description: string, price: number): void {
     this.title = title;
     this.price = price;
     this.updatedAt = new Date();
-    this.apply(new CourseUpdatedEvent({
-      courseId: this.id,
-      title,
-      price,
-    }));
+    this.apply(
+      new CourseUpdatedEvent({
+        courseId: this.id,
+        title,
+        price,
+      })
+    );
   }
 
   // Utility method for arrays
@@ -1857,13 +2309,13 @@ export class CreateCourseHandler implements ICommandHandler<CreateCourseCommand>
 
   async execute(command: CreateCourseCommand): Promise<void> {
     const course = Course.create(command);
-    
+
     // Save directly using domain object's toEntity method
     await this.courseRepository.save(course.toEntity());
-    
+
     // Cache the new course
     await this.cacheService.set(`course:${course.id}`, course, 3600);
-    
+
     course.commit();
   }
 }
@@ -1890,10 +2342,10 @@ export class EnrollStudentHandler implements ICommandHandler<EnrollStudentComman
     }
 
     // Fetch entity and convert to domain
-    const courseEntity = await this.courseRepository.findOne({ 
-      where: { id: command.courseId } 
+    const courseEntity = await this.courseRepository.findOne({
+      where: { id: command.courseId },
     });
-    
+
     if (!courseEntity) {
       throw new Error('Course not found');
     }
@@ -1902,10 +2354,10 @@ export class EnrollStudentHandler implements ICommandHandler<EnrollStudentComman
     const course = this.mergeObjectContext(Course.fromEntity(courseEntity));
 
     course.enrollStudent(command.studentId, command.paymentId);
-    
+
     // Save back to database using domain object's toEntity method
     await this.courseRepository.save(course.toEntity());
-    
+
     course.commit();
   }
 }
@@ -1960,7 +2412,9 @@ export class CourseEventsController {
   }
 
   @MessagePattern(COURSE_PATTERNS.MESSAGES.VERIFY_ENROLLMENT)
-  async verifyEnrollment(@Payload() data: { courseId: string; studentId: string }): Promise<boolean> {
+  async verifyEnrollment(
+    @Payload() data: { courseId: string; studentId: string }
+  ): Promise<boolean> {
     return this.queryBus.execute(new VerifyEnrollmentQuery(data.courseId, data.studentId));
   }
 }
@@ -1979,11 +2433,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
   courseEnrollment = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(CourseEnrollmentRequestedEvent),
-      map((event) => new ProcessPaymentCommand(
-        event.studentId,
-        event.amount,
-        event.courseId
-      ))
+      map(event => new ProcessPaymentCommand(event.studentId, event.amount, event.courseId))
     );
   };
 
@@ -1991,11 +2441,7 @@ export class CourseEnrollmentSaga extends BaseSaga {
   paymentProcessed = (events$: Observable<any>): Observable<ICommand> => {
     return events$.pipe(
       ofType(PaymentProcessedEvent),
-      map((event) => new CreateEnrollmentCommand(
-        event.courseId,
-        event.studentId,
-        event.paymentId
-      ))
+      map(event => new CreateEnrollmentCommand(event.courseId, event.studentId, event.paymentId))
     );
   };
 }
@@ -2017,20 +2463,20 @@ export class GetCourseByIdHandler implements IQueryHandler<GetCourseByIdQuery> {
     }
 
     // Fetch from database
-    const courseEntity = await this.courseRepository.findOne({ 
-      where: { id: query.courseId } 
+    const courseEntity = await this.courseRepository.findOne({
+      where: { id: query.courseId },
     });
-    
+
     if (!courseEntity) {
       return null;
     }
 
     // Convert to domain object directly
     const course = Course.fromEntity(courseEntity);
-    
+
     // Cache the result
     await this.cacheService.set(`course:${course.id}`, course, 3600);
-    
+
     return course;
   }
 }
@@ -2046,10 +2492,7 @@ import { EventBridgeTransport } from '@edtech/shared';
     // Import entities directly - no repository wrappers
     TypeOrmModule.forFeature([CourseEntity, LessonEntity, EnrollmentEntity]),
   ],
-  controllers: [
-    CourseController,
-    CourseEventsController,
-  ],
+  controllers: [CourseController, CourseEventsController],
   providers: [
     // Command handlers
     CreateCourseHandler,
@@ -2096,7 +2539,7 @@ import { EventBridgeTransport } from '@edtech/shared';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Connect EventBridge microservice using shared transport
   app.connectMicroservice({
     strategy: new EventBridgeTransport({
@@ -2112,6 +2555,7 @@ async function bootstrap() {
 ```
 
 This optimized example demonstrates:
+
 - **Direct TypeORM usage** with domain objects containing their own conversion methods
 - **No repository wrappers or mapper classes** - domain objects handle entity conversion
 - **Shared patterns library** for consistent event/message naming across services
@@ -2120,7 +2564,7 @@ This optimized example demonstrates:
 - **Simplified dependency injection** without unnecessary abstractions
 - **Type-safe patterns** for inter-service communication
 - **Optimized caching strategies** with targeted use cases
-- **Lambda integration** for background processing with ESM modules 
+- **Lambda integration** for background processing with ESM modules
 
 ## 🔧 GraphQL API TypeScript Strategy
 
@@ -2129,13 +2573,14 @@ This optimized example demonstrates:
 For the GraphQL API layer (`@/graphql-api`), we use a hybrid approach that balances development speed with type safety:
 
 #### ✅ **Keep as JavaScript (Infrastructure/Utilities)**
+
 ```
 graphql-api/
 ├── scripts/              # Build and development tools (JavaScript)
 │   ├── compose-schemas.js
 │   ├── enhanced-compose.js
 │   └── validate-schemas.js
-├── registry/             # Schema versioning utilities (JavaScript)  
+├── registry/             # Schema versioning utilities (JavaScript)
 │   └── schema-registry.js
 ├── error-handling/       # Base error classes (JavaScript)
 │   └── graphql-errors.js
@@ -2144,6 +2589,7 @@ graphql-api/
 ```
 
 #### 🔄 **Implement in TypeScript (Business Logic)**
+
 ```
 graphql-api/
 ├── resolvers/            # Service-specific resolvers (TypeScript)
@@ -2165,6 +2611,7 @@ graphql-api/
 ### 🏗️ **Development Workflow**
 
 #### **For TypeScript Resolvers**
+
 ```bash
 # Auto-generate types from GraphQL schema
 npm run codegen
@@ -2180,11 +2627,12 @@ npm run build:resolvers
 ```
 
 #### **For JavaScript Utilities**
+
 ```bash
 # Schema composition (JavaScript)
 npm run enhanced-compose
 
-# Schema validation (JavaScript) 
+# Schema validation (JavaScript)
 npm run schema-validate
 
 # Registry management (JavaScript)
@@ -2192,6 +2640,7 @@ npm run registry:list
 ```
 
 ### 📝 **TypeScript Resolver Implementation**
+
 ```typescript
 // resolvers/user/user.resolver.ts
 import { AppSyncEvent, User, CreateUserResponse } from '../../types/generated';
@@ -2200,14 +2649,14 @@ export class UserResolver {
   static async createUser(event: AppSyncEvent): Promise<CreateUserResponse> {
     // Type-safe business logic with auto-generated types
     const { input } = event.arguments;
-    
+
     // Call to JavaScript error utilities
     const { ValidationError } = require('../../error-handling/graphql-errors');
-    
+
     if (!input.email) {
       throw new ValidationError('Email is required', 'email');
     }
-    
+
     // Strongly typed return using generated types
     return { user: newUser, errors: [] };
   }
@@ -2227,12 +2676,14 @@ export const handler = async (event: AppSyncEvent): Promise<any> => {
 ### 🎯 **Benefits of This Approach**
 
 #### **Development Experience**
+
 - ✅ **Fast Build Tools**: JavaScript utilities compile instantly
 - ✅ **Type Safety**: Critical business logic gets TypeScript benefits
 - ✅ **Auto-generated Types**: GraphQL schema changes automatically update types
 - ✅ **Tool Compatibility**: Best compatibility with Apollo/GraphQL ecosystem
 
 #### **Production Benefits**
+
 - ✅ **Performance**: Compiled TypeScript for Lambda functions
 - ✅ **Reliability**: Type checking for critical business operations
 - ✅ **Maintainability**: Clear separation of concerns
@@ -2241,9 +2692,69 @@ export const handler = async (event: AppSyncEvent): Promise<any> => {
 ### 💡 **Implementation Guidelines**
 
 **For Day 4 and Beyond:**
+
 - ✅ **Keep utilities in JavaScript** (schema registry, composition, error classes)
 - ✅ **Implement business logic in TypeScript** (resolvers, service integration)
 - ✅ **Use GraphQL code generation** for automatic type creation
 - ✅ **Gradual migration** as needed for specific components
 
-This hybrid strategy provides optimal balance between development speed and type safety, perfect for the EdTech platform's microservices architecture. 
+This hybrid strategy provides optimal balance between development speed and type safety, perfect for the EdTech platform's microservices architecture.
+
+### Benefits of Modular Configuration
+
+#### **🏗️ Architecture Benefits**
+
+1. **Separation of Concerns**:
+   - Shared library contains only reusable components
+   - Services own their specific configuration logic
+   - Clear boundary between generic and service-specific code
+
+2. **Flexibility**:
+   - Services can mix and match only the configuration they need
+   - Easy to add new database types or AWS services
+   - Services can customize configuration logic while using shared base
+
+3. **Maintainability**:
+   - Configuration changes in one service don't affect others
+   - Shared base factories ensure consistency across services
+   - Easy to understand what each service needs
+
+#### **🎯 Development Benefits**
+
+1. **Type Safety**: Full TypeScript support with compile-time checking
+2. **Runtime Validation**: Zod ensures environment variables are valid at startup
+3. **Service Autonomy**: Each service manages its own configuration lifecycle
+4. **Reusability**: Base factories prevent code duplication across services
+5. **Scalability**: Easy to add new services with different database combinations
+
+#### **📋 Configuration Patterns by Service Type**
+
+| Service Type          | Database Combination                    | Example                |
+| --------------------- | --------------------------------------- | ---------------------- |
+| **Full-featured**     | postgres + redis + cognito + s3 + email | user-service           |
+| **Course management** | postgres + redis                        | learning-service       |
+| **Transactional**     | postgres only                           | payment-service        |
+| **Real-time**         | dynamo + redis                          | communication-service  |
+| **File storage**      | dynamo + s3                             | content-service        |
+| **Analytics**         | dynamo + redshift                       | analytics-service      |
+| **Graph-based**       | neo4j + postgres                        | tutor-matching-service |
+| **AI/ML**             | vector-db + dynamo                      | ai-service             |
+
+#### **🔧 Implementation Summary**
+
+**Shared Library (`@edtech/config`)** contains:
+
+- Base types and interfaces
+- Base validation schemas (Zod)
+- Configuration factories (reusable functions)
+- Base configuration service class
+- Utility functions
+
+**Each Service** contains:
+
+- Service-specific configuration creators
+- Service-specific environment schema composition
+- Service-specific configuration service
+- Service-specific module setup
+
+This approach ensures maximum reusability while maintaining service autonomy and clear separation of concerns.

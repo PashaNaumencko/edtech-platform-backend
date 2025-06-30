@@ -18,6 +18,11 @@ cdk.out/
 *.pem
 .aws/
 
+# CDK Generated Files (keep source directories clean)
+cdk/**/*.js
+cdk/**/*.d.ts
+cdk/**/*.js.map
+
 # Database patterns
 *.db
 *.sqlite
