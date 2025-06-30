@@ -1,18 +1,22 @@
-# Phase 1: GraphQL Federation Foundation & User Service - Step-by-Step Development Plan
-**Duration: 16 days | Priority: Critical**
+# Phase 1: GraphQL Federation Foundation & User Service - UPDATED Plan
+
+**Duration: 20 days | Priority: Critical**
 
 ## Phase Overview
-This phase establishes the GraphQL Federation foundation with AWS AppSync as the supergraph and implements the User Service as the first microservice following our standardized DDD + Clean Architecture + Use Case Pattern.
+
+This phase establishes the GraphQL Federation foundation with AWS AppSync as the supergraph and implements the User Service as the first microservice following our standardized DDD + Clean Architecture + Use Case Pattern. **UPDATED** to include enhanced domain layer before moving to application layer.
 
 ## Step-by-Step Development Plan
 
 ### Week 1: GraphQL Federation Foundation (Days 1-7)
 
 #### Day 1: Project Foundation Setup
+
 **Goal**: Establish development environment and federation tooling
 **Developer**: DevOps/Backend Lead
 
 **Tasks**:
+
 1. **Morning (2h)**: Install Apollo Federation dependencies
    ```bash
    npm install @apollo/federation @apollo/gateway @apollo/subgraph
@@ -33,12 +37,14 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 4. **Late Afternoon (1h)**: Create development scripts and documentation
 
 **Deliverables**:
+
 - [ ] Apollo Federation workspace configured
 - [ ] Schema composition pipeline working
 - [ ] Development scripts created
 - [ ] Basic federation documentation
 
 **Acceptance Criteria**:
+
 - ✅ `npm run compose-schemas` command works
 - ✅ Schema validation pipeline runs successfully
 - ✅ Development environment documented
@@ -46,10 +52,12 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 ---
 
 #### Day 2: AWS AppSync Infrastructure (CDK)
+
 **Goal**: Create AppSync GraphQL API infrastructure
 **Developer**: DevOps/Backend Lead
 
 **Tasks**:
+
 1. **Morning (3h)**: Create AppSync CDK stack
    ```typescript
    // cdk/lib/stacks/appsync-stack.ts
@@ -66,12 +74,14 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 3. **Late Afternoon (2h)**: Deploy and test basic AppSync setup
 
 **Deliverables**:
+
 - [ ] AppSync CDK stack created
 - [ ] Cognito authentication configured
 - [ ] Basic AppSync API deployed
 - [ ] Authentication flow tested
 
 **Acceptance Criteria**:
+
 - ✅ AppSync API accessible via AWS Console
 - ✅ Cognito authentication working
 - ✅ Basic GraphQL introspection query succeeds
@@ -79,10 +89,12 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 ---
 
 #### Day 3: Schema Registry & Error Handling
+
 **Goal**: Implement schema registry and error handling patterns
 **Developer**: Backend Lead
 
 **Tasks**:
+
 1. **Morning (3h)**: Set up schema registry
    - Apollo Studio schema registry configuration
    - Schema versioning strategy
@@ -94,12 +106,14 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 3. **Evening (2h)**: Create schema composition automation
 
 **Deliverables**:
+
 - [ ] Schema registry configured
 - [ ] Error handling patterns implemented
 - [ ] Schema composition automated
 - [ ] Error handling documentation
 
 **Acceptance Criteria**:
+
 - ✅ Schema registry receives and stores schemas
 - ✅ Error responses follow consistent format
 - ✅ Schema composition runs automatically
@@ -107,10 +121,12 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 ---
 
 #### Day 4: User Service Project Setup
+
 **Goal**: Initialize User Service with standardized folder structure
 **Developer**: Backend Developer
 
 **Tasks**:
+
 1. **Morning (2h)**: Create User Service folder structure
    ```
    apps/user-service/src/
@@ -118,6 +134,9 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
    │   ├── entities/
    │   ├── value-objects/
    │   ├── events/
+   │   ├── services/
+   │   ├── specifications/
+   │   ├── rules/
    │   └── repositories/
    ├── application/
    │   ├── use-cases/
@@ -139,377 +158,538 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 4. **Late Afternoon (2h)**: Create base interfaces and types
 
 **Deliverables**:
+
 - [ ] User Service project structure created
 - [ ] NestJS modules configured
 - [ ] TypeORM database connection working
 - [ ] Base interfaces and types defined
 
 **Acceptance Criteria**:
+
 - ✅ User Service starts without errors
 - ✅ Database connection established
 - ✅ Health check endpoint returns 200
 
 ---
 
-#### Days 5-6: Domain Layer Implementation
-**Goal**: Implement complete domain layer for User Service
+#### Days 5-6: Basic Domain Layer Implementation ✅ COMPLETED
+
+**Goal**: Implement core domain layer for User Service
 **Developer**: Backend Developer
 
-**Day 5 Tasks**:
+**Day 5 Tasks**: ✅ COMPLETED
+
 1. **Morning (3h)**: Create User entity (AggregateRoot)
-   ```typescript
-   // domain/entities/user.entity.ts
-   export class User extends AggregateRoot {
-     static create(data: CreateUserData): User
-     becomeTutor(certifications: Certification[]): void
-     updateProfile(profile: UserProfile): void
-   }
-   ```
-2. **Afternoon (3h)**: Create value objects (Email, UserId, UserProfile)
-3. **Late Afternoon (2h)**: Create domain events
+2. **Afternoon (3h)**: Create value objects (Email, UserId, UserName, UserRole)
+3. **Late Afternoon (2h)**: Create basic domain events
 
-**Day 6 Tasks**:
-1. **Morning (3h)**: Create TutorProfile entity and SocialAccount entity
-2. **Afternoon (3h)**: Define repository interfaces
-3. **Late Afternoon (2h)**: Create domain exceptions and business rules
+**Day 6 Tasks**: ✅ COMPLETED
 
-**Deliverables**:
-- [ ] User entity with business logic
-- [ ] TutorProfile and SocialAccount entities
-- [ ] Value objects (Email, UserId, UserProfile)
-- [ ] Domain events (UserCreated, UserBecameTutor)
-- [ ] Repository interfaces
-- [ ] Domain exceptions
+1. **Morning (3h)**: Create repository interfaces
+2. **Afternoon (3h)**: Create UserFactory for object creation
+3. **Late Afternoon (2h)**: Clean up and organize domain structure
 
-**Acceptance Criteria**:
-- ✅ All domain entities have unit tests
-- ✅ Business rules are enforced in domain
-- ✅ Domain events are properly emitted
+**Deliverables**: ✅ COMPLETED
+
+- ✅ User entity with AggregateRoot extension
+- ✅ Core value objects (Email, UserId, UserName, UserRole)
+- ✅ Basic domain events (Created, Updated, Activated, Deactivated)
+- ✅ Repository interfaces (IUserRepository)
+- ✅ UserFactory for creation patterns
+- ✅ NestJS CQRS integration
+
+**Status**: ✅ **COMPLETED - Ready for Enhanced Domain Layer**
 
 ---
 
-#### Day 7: Application Layer Foundation
-**Goal**: Set up application layer structure and base use cases
+#### Day 7: Enhanced Domain Services Foundation
+
+**Goal**: Implement domain services and business rules foundation
 **Developer**: Backend Developer
 
 **Tasks**:
+
+1. **Morning (3h)**: Implement UserDomainService
+   ```typescript
+   // domain/services/user-domain.service.ts
+   @Injectable()
+   export class UserDomainService {
+     canUserBePromotedToTutor(user: User, requirements: TutorRequirements): boolean;
+     calculateUserReputationScore(user: User, reviews: Review[]): number;
+     validateUserTransition(from: UserRole, to: UserRole, requestedBy: User): void;
+   }
+   ```
+2. **Afternoon (3h)**: Create business rules classes
+   ```typescript
+   // domain/rules/user-business-rules.ts
+   export class UserBusinessRules {
+     static readonly MIN_AGE_FOR_TUTOR = 18;
+     static canBecomeAdmin(user: User, requestedBy: User): boolean;
+     static shouldLockAccount(user: User, failedAttempts: number): boolean;
+   }
+   ```
+3. **Late Afternoon (2h)**: Create domain-specific errors
+
+**Deliverables**:
+
+- [ ] UserDomainService with complex business logic
+- [ ] UserBusinessRules with centralized policies
+- [ ] Domain-specific error types
+- [ ] Unit tests for domain services
+
+**Acceptance Criteria**:
+
+- ✅ Business logic moved from entities to services
+- ✅ Clear separation of domain concerns
+- ✅ Domain services registered in module
+
+---
+
+### Week 2: Enhanced Domain Layer (Days 8-11)
+
+#### Day 8: Domain Services Completion & Error Handling
+
+**Goal**: Complete domain services and implement comprehensive error handling
+**Developer**: Backend Developer
+
+**Tasks**:
+
+1. **Morning (3h)**: Complete UserDomainService implementation
+2. **Afternoon (3h)**: Implement domain-specific errors
+   ```typescript
+   // domain/errors/user.errors.ts
+   export class UserNotFoundError extends UserDomainError
+   export class InvalidUserRoleError extends UserDomainError
+   export class UserAlreadyExistsError extends UserDomainError
+   ```
+3. **Late Afternoon (2h)**: Create comprehensive unit tests
+
+**Deliverables**:
+
+- [ ] Complete UserDomainService
+- [ ] Full error hierarchy
+- [ ] 95%+ test coverage for domain services
+- [ ] Integration with existing domain layer
+
+**Acceptance Criteria**:
+
+- ✅ All domain services fully tested
+- ✅ Error handling comprehensive
+- ✅ Domain logic centralized properly
+
+---
+
+#### Day 9: Specifications Pattern Foundation
+
+**Goal**: Implement specifications pattern for query logic
+**Developer**: Backend Developer
+
+**Tasks**:
+
+1. **Morning (3h)**: Create core specification interfaces
+   ```typescript
+   // domain/specifications/specification.interface.ts
+   export interface Specification<T> {
+     isSatisfiedBy(item: T): boolean;
+   }
+   ```
+2. **Afternoon (3h)**: Implement user specifications
+   ```typescript
+   // domain/specifications/user.specifications.ts
+   export class ActiveUserSpecification implements Specification<User>
+   export class EligibleTutorSpecification implements Specification<User>
+   ```
+3. **Late Afternoon (2h)**: Create composite specifications
+
+**Deliverables**:
+
+- [ ] Core specification interfaces
+- [ ] User-specific specifications
+- [ ] Composite specification support
+- [ ] Specification unit tests
+
+**Acceptance Criteria**:
+
+- ✅ Specifications are composable
+- ✅ Complex queries expressed cleanly
+- ✅ Repository integration ready
+
+---
+
+#### Day 10: Enhanced Value Objects
+
+**Goal**: Implement enhanced value objects for user domain
+**Developer**: Backend Developer
+
+**Tasks**:
+
+1. **Morning (3h)**: Create UserPreferences value object
+   ```typescript
+   // domain/value-objects/user-preferences.value-object.ts
+   export class UserPreferences {
+     constructor(timezone, language, notificationSettings);
+     shouldReceiveNotification(type: NotificationType): boolean;
+   }
+   ```
+2. **Afternoon (3h)**: Create UserProfile value object
+   ```typescript
+   // domain/value-objects/user-profile.value-object.ts
+   export class UserProfile {
+     constructor(bio, skills, experienceLevel, dateOfBirth);
+     get age(): number;
+     hasSkill(skillName: string): boolean;
+   }
+   ```
+3. **Late Afternoon (2h)**: Integrate with User entity
+
+**Deliverables**:
+
+- [ ] UserPreferences value object
+- [ ] UserProfile value object
+- [ ] Enhanced User entity integration
+- [ ] Value object validation
+
+**Acceptance Criteria**:
+
+- ✅ Rich value objects with behavior
+- ✅ Immutable and self-validating
+- ✅ Clear encapsulation of data
+
+---
+
+#### Day 11: Advanced Domain Events
+
+**Goal**: Implement advanced domain events and event enrichment
+**Developer**: Backend Developer
+
+**Tasks**:
+
+1. **Morning (3h)**: Create enhanced domain events
+   ```typescript
+   // domain/events/user-role-changed.event.ts
+   export class UserRoleChangedEvent extends DomainEvent
+   export class UserProfileUpdatedEvent extends DomainEvent
+   ```
+2. **Afternoon (3h)**: Implement event enrichment capabilities
+3. **Late Afternoon (2h)**: Test event workflows
+
+**Deliverables**:
+
+- [ ] Enhanced domain events
+- [ ] Event enrichment service
+- [ ] Complete event coverage
+- [ ] Event workflow tests
+
+**Acceptance Criteria**:
+
+- ✅ Rich event data for downstream processing
+- ✅ Event versioning support
+- ✅ Clear event naming structure
+
+---
+
+### Week 3: Application Layer Implementation (Days 12-15)
+
+#### Day 12: Application Layer Foundation
+
+**Goal**: Set up application layer structure leveraging enhanced domain
+**Developer**: Backend Developer
+
+**Tasks**:
+
 1. **Morning (3h)**: Implement IUseCase interface and base classes
    ```typescript
    // application/use-cases/create-user/create-user.usecase.ts
-   export class CreateUserUseCase implements IUseCase<CreateUserRequest, CreateUserResponse>
+   export class CreateUserUseCase implements IUseCase<CreateUserRequest, CreateUserResponse> {
+     constructor(
+       private readonly userDomainService: UserDomainService,
+       private readonly userRepository: IUserRepository
+     ) {}
+   }
    ```
-2. **Afternoon (3h)**: Create DTO classes and request/response objects
+2. **Afternoon (3h)**: Create DTO classes leveraging enhanced value objects
 3. **Late Afternoon (2h)**: Set up event handlers structure
 
 **Deliverables**:
+
 - [ ] IUseCase interface implemented
-- [ ] Base use case structure created
-- [ ] DTO classes defined
-- [ ] Event handlers structure ready
+- [ ] Use cases leveraging domain services
+- [ ] Enhanced DTOs with value objects
+- [ ] Event handlers ready
 
 **Acceptance Criteria**:
-- ✅ Use case pattern follows IUseCase interface
-- ✅ DTOs properly map domain objects
-- ✅ Event handler registration working
+
+- ✅ Use cases integrate with domain services
+- ✅ DTOs use enhanced value objects
+- ✅ Clear separation of concerns
 
 ---
 
-### Week 2: Core Implementation (Days 8-12)
+#### Day 13: Critical Use Cases Implementation
 
-#### Day 8: Critical Use Cases Implementation
-**Goal**: Implement core user management use cases
+**Goal**: Implement core use cases using enhanced domain layer
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Implement CreateUserUseCase
-   - User validation and creation
-   - Domain event publishing
-   - Response mapping
-2. **Afternoon (3h)**: Implement UpdateUserProfileUseCase
-3. **Late Afternoon (2h)**: Implement BecomeTutorUseCase
+
+1. **Morning (3h)**: Implement CreateUserUseCase with domain services
+2. **Afternoon (3h)**: Implement UpdateUserProfileUseCase with specifications
+3. **Late Afternoon (2h)**: Implement BecomeTutorUseCase with business rules
 
 **Deliverables**:
-- [ ] CreateUserUseCase with full implementation
-- [ ] UpdateUserProfileUseCase
-- [ ] BecomeTutorUseCase
-- [ ] Unit tests for all use cases
+
+- [ ] CreateUserUseCase with domain service integration
+- [ ] UpdateUserProfileUseCase with validation
+- [ ] BecomeTutorUseCase with business rules
+- [ ] Comprehensive use case tests
 
 **Acceptance Criteria**:
-- ✅ All use cases pass unit tests
-- ✅ Domain events are properly emitted
-- ✅ Business validation working correctly
+
+- ✅ Use cases leverage domain services
+- ✅ Business rules properly enforced
+- ✅ Domain events published correctly
 
 ---
 
-#### Day 9: Database Infrastructure
-**Goal**: Implement PostgreSQL integration and data persistence
+#### Day 14: Database Infrastructure
+
+**Goal**: Implement PostgreSQL integration with enhanced domain mapping
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Create TypeORM entities (UserOrmEntity, TutorProfileOrmEntity)
-   ```typescript
-   // infrastructure/postgres/entities/user.orm-entity.ts
-   @Entity('users')
-   export class UserOrmEntity {
-     @PrimaryGeneratedColumn('uuid')
-     id: string;
-     @Column() email: string;
-     // ... other fields
-   }
-   ```
-2. **Afternoon (3h)**: Implement repository implementations
-3. **Late Afternoon (2h)**: Create database migrations
+
+1. **Morning (3h)**: Create TypeORM entities supporting enhanced value objects
+2. **Afternoon (3h)**: Implement repository with specifications support
+3. **Late Afternoon (2h)**: Create database migrations for enhanced schema
 
 **Deliverables**:
-- [ ] TypeORM entities created
-- [ ] Repository implementations
+
+- [ ] Enhanced TypeORM entities
+- [ ] Repository with specification support
 - [ ] Database migrations
-- [ ] Database seeds for testing
+- [ ] Enhanced database seeds
 
 **Acceptance Criteria**:
-- ✅ Database schema created successfully
-- ✅ CRUD operations working
-- ✅ Migrations run without errors
+
+- ✅ Value objects properly persisted
+- ✅ Specifications work with database
+- ✅ Enhanced schema supports all features
 
 ---
 
-#### Day 10: Redis Caching & Cognito Integration
-**Goal**: Implement caching and authentication services
+#### Day 15: Redis, Cognito & S3 Integration
+
+**Goal**: Implement remaining infrastructure services
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Implement Redis caching service
-   ```typescript
-   // infrastructure/redis/cache/user.cache.ts
-   export class UserCacheService {
-     async getUser(id: string): Promise<UserDto | null>
-     async setUser(user: UserDto): Promise<void>
-   }
-   ```
-2. **Afternoon (3h)**: Implement Cognito authentication service
-3. **Late Afternoon (2h)**: Create authentication guards and decorators
+
+1. **Morning (3h)**: Implement Redis caching with enhanced models
+2. **Afternoon (2h)**: Implement Cognito authentication service
+3. **Late Afternoon (3h)**: Implement S3 service and email templates
 
 **Deliverables**:
-- [ ] Redis caching service
-- [ ] Cognito authentication service
-- [ ] Authentication guards
-- [ ] JWT token validation
 
-**Acceptance Criteria**:
-- ✅ User data cached and retrieved correctly
-- ✅ Cognito authentication working
-- ✅ Protected endpoints require valid tokens
-
----
-
-#### Day 11: S3 & Email Services
-**Goal**: Implement file upload and email notification services
-**Developer**: Backend Developer
-
-**Tasks**:
-1. **Morning (3h)**: Implement S3 profile image upload service
-   ```typescript
-   // infrastructure/s3/services/profile-image.service.ts
-   export class ProfileImageService {
-     async uploadProfileImage(userId: string, file: Buffer): Promise<string>
-   }
-   ```
-2. **Afternoon (3h)**: Implement email service with SES
-3. **Late Afternoon (2h)**: Create email templates for user registration
-
-**Deliverables**:
+- [ ] Enhanced Redis caching service
+- [ ] Cognito authentication integration
 - [ ] S3 file upload service
 - [ ] Email service with templates
-- [ ] Profile image upload endpoint
-- [ ] Welcome email functionality
 
 **Acceptance Criteria**:
-- ✅ Profile images upload to S3 successfully
-- ✅ Welcome emails sent on user registration
-- ✅ Email templates render correctly
+
+- ✅ Enhanced models cached properly
+- ✅ Authentication working with domain
+- ✅ File uploads and emails functional
 
 ---
 
-#### Day 12: EventBridge & Event Handlers
-**Goal**: Implement domain event publishing and handling
+### Week 4: Infrastructure & API (Days 16-20)
+
+#### Day 16: EventBridge & Event Handlers
+
+**Goal**: Implement domain event publishing with enhanced events
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Implement EventBridge publisher service
-   ```typescript
-   // infrastructure/event-bridge/publishers/user-event.publisher.ts
-   export class UserEventPublisher {
-     async publishUserCreated(user: User): Promise<void>
-   }
-   ```
-2. **Afternoon (3h)**: Implement event handlers for side effects
-3. **Late Afternoon (2h)**: Test event-driven workflows
+
+1. **Morning (3h)**: Implement EventBridge publisher for enhanced events
+2. **Afternoon (3h)**: Implement event handlers with domain service integration
+3. **Late Afternoon (2h)**: Test enhanced event workflows
 
 **Deliverables**:
-- [ ] EventBridge publisher service
-- [ ] Event handlers for domain events
-- [ ] Event-driven side effects working
-- [ ] Event publishing tests
+
+- [ ] Enhanced EventBridge publisher
+- [ ] Event handlers using domain services
+- [ ] Complete event-driven workflows
+- [ ] Event integration tests
 
 **Acceptance Criteria**:
-- ✅ Domain events published to EventBridge
-- ✅ Event handlers process events correctly
-- ✅ Side effects execute as expected
+
+- ✅ Enhanced events published properly
+- ✅ Event handlers use domain services
+- ✅ Side effects execute correctly
 
 ---
 
-### Week 3: API & Integration (Days 13-16)
+#### Day 17: Internal HTTP Controllers
 
-#### Day 13: Internal HTTP Controllers
-**Goal**: Implement internal API controllers for service-to-service communication
+**Goal**: Implement internal APIs leveraging enhanced domain
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Implement internal user controllers
-   ```typescript
-   // presentation/http/controllers/internal/users.internal.controller.ts
-   @Controller('internal/users')
-   export class InternalUsersController {
-     @Get(':id') async getUser(@Param('id') id: string): Promise<UserDto>
-     @Post() async createUser(@Body() dto: CreateUserDto): Promise<UserDto>
-   }
-   ```
+
+1. **Morning (3h)**: Implement internal user controllers with enhanced DTOs
 2. **Afternoon (3h)**: Implement internal auth controllers
-3. **Late Afternoon (2h)**: Add API documentation and validation
+3. **Late Afternoon (2h)**: Add API documentation and enhanced validation
 
 **Deliverables**:
-- [ ] Internal users controller
+
+- [ ] Enhanced internal users controller
 - [ ] Internal auth controller
-- [ ] API validation and error handling
-- [ ] Swagger documentation
+- [ ] API validation with domain rules
+- [ ] Comprehensive API documentation
 
 **Acceptance Criteria**:
-- ✅ All internal APIs working correctly
-- ✅ Service authentication required
-- ✅ API documentation complete
+
+- ✅ APIs use enhanced domain models
+- ✅ Validation leverages business rules
+- ✅ Documentation complete and accurate
 
 ---
 
-#### Day 14: GraphQL Subgraph Schema
-**Goal**: Create User service GraphQL subgraph schema
+#### Day 18: GraphQL Subgraph Schema
+
+**Goal**: Create User service GraphQL subgraph with enhanced types
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Define User subgraph schema
-   ```graphql
-   # presentation/graphql/schemas/user.subgraph.graphql
-   type User @key(fields: "id") {
-     id: ID!
-     email: String!
-     firstName: String!
-     lastName: String!
-     isTutor: Boolean!
-   }
-   ```
-2. **Afternoon (3h)**: Implement schema-first GraphQL resolvers
-3. **Late Afternoon (2h)**: Add federation directives and entity resolvers
+
+1. **Morning (3h)**: Define enhanced User subgraph schema
+2. **Afternoon (3h)**: Implement resolvers using domain services
+3. **Late Afternoon (2h)**: Add federation directives and enhanced resolvers
 
 **Deliverables**:
-- [ ] User subgraph schema
-- [ ] GraphQL resolvers
+
+- [ ] Enhanced User subgraph schema
+- [ ] Resolvers using domain services
 - [ ] Federation directives
 - [ ] Schema composition working
 
 **Acceptance Criteria**:
-- ✅ Subgraph schema validates
-- ✅ Resolvers return correct data
-- ✅ Federation directives working
+
+- ✅ Schema reflects enhanced domain model
+- ✅ Resolvers leverage domain services
+- ✅ Federation working properly
 
 ---
 
-#### Day 15: Lambda Resolvers Implementation
-**Goal**: Create Lambda resolvers for AppSync integration
+#### Day 19: Lambda Resolvers Implementation
+
+**Goal**: Create Lambda resolvers for AppSync with enhanced integration
 **Developer**: Backend Developer
 
 **Tasks**:
-1. **Morning (3h)**: Implement User query resolvers
-   ```typescript
-   // graphql-api/resolvers/user/user.resolvers.ts
-   export const getUserResolver = async (event: AppSyncEvent): Promise<UserDto> => {
-     // Call internal user service API
-   }
-   ```
-2. **Afternoon (3h)**: Implement User mutation resolvers
-3. **Late Afternoon (2h)**: Set up service-to-service authentication
+
+1. **Morning (3h)**: Implement enhanced User query resolvers
+2. **Afternoon (3h)**: Implement enhanced User mutation resolvers
+3. **Late Afternoon (2h)**: Set up service authentication and error handling
 
 **Deliverables**:
-- [ ] Lambda query resolvers
-- [ ] Lambda mutation resolvers
-- [ ] Service authentication tokens
-- [ ] Error handling in resolvers
+
+- [ ] Enhanced Lambda query resolvers
+- [ ] Enhanced Lambda mutation resolvers
+- [ ] Service authentication
+- [ ] Domain error handling in resolvers
 
 **Acceptance Criteria**:
-- ✅ AppSync can call Lambda resolvers
-- ✅ Resolvers authenticate with User service
-- ✅ GraphQL operations return correct data
+
+- ✅ Resolvers use enhanced domain features
+- ✅ Authentication working properly
+- ✅ Error handling comprehensive
 
 ---
 
-#### Day 16: Testing & Integration Validation
-**Goal**: Complete testing and validate end-to-end integration
+#### Day 20: Testing & Integration Validation
+
+**Goal**: Complete testing and validate enhanced end-to-end integration
 **Developer**: Backend Developer + QA
 
 **Tasks**:
-1. **Morning (3h)**: Complete unit test coverage
-   - Domain layer tests
-   - Use case tests
-   - Infrastructure tests
-2. **Afternoon (3h)**: Integration testing
-   - Database integration tests
-   - External service integration tests
-   - GraphQL federation tests
-3. **Late Afternoon (2h)**: End-to-end workflow testing
+
+1. **Morning (3h)**: Complete unit test coverage for enhanced features
+2. **Afternoon (3h)**: Integration testing with enhanced domain
+3. **Late Afternoon (2h)**: End-to-end workflow testing with all enhancements
 
 **Deliverables**:
-- [ ] 90%+ unit test coverage
+
+- [ ] 95%+ unit test coverage including enhancements
 - [ ] Integration tests passing
-- [ ] End-to-end user registration flow working
-- [ ] GraphQL federation functioning
+- [ ] Enhanced end-to-end workflows working
+- [ ] GraphQL federation with enhanced features
 
 **Acceptance Criteria**:
-- ✅ All tests passing
-- ✅ User can register via GraphQL API
-- ✅ Internal APIs respond correctly
-- ✅ Events published and handled properly
+
+- ✅ All tests passing including enhanced features
+- ✅ Enhanced user workflows functional
+- ✅ Domain services integrated end-to-end
+- ✅ GraphQL API showcases enhanced capabilities
 
 ---
 
-## Phase 1 Success Criteria
+## Updated Phase 1 Success Criteria
 
 ### Technical Acceptance Criteria
+
 - ✅ GraphQL Federation setup with AppSync
-- ✅ User Service fully implemented with DDD pattern
+- ✅ User Service with **enhanced domain layer** fully implemented
+- ✅ **Domain services and business rules** operational
+- ✅ **Specifications pattern** working for queries
+- ✅ **Enhanced value objects** integrated throughout
 - ✅ All infrastructure components operational
 - ✅ Internal APIs secured and documented
 - ✅ Lambda resolvers integrated with AppSync
-- ✅ 90%+ test coverage achieved
+- ✅ 95%+ test coverage achieved
 
-### Functional Acceptance Criteria
-- ✅ Users can register and authenticate
-- ✅ Profile management working
-- ✅ Tutor registration process functional
-- ✅ GraphQL API accessible and secure
+### Enhanced Functional Acceptance Criteria
+
+- ✅ Users can register with **enhanced validation**
+- ✅ Profile management with **rich value objects**
+- ✅ Tutor registration with **business rules enforcement**
+- ✅ **Domain services** powering business logic
+- ✅ **Specifications** enabling complex queries
+- ✅ GraphQL API with **enhanced domain features**
 - ✅ Service-to-service communication established
 
-### Performance Criteria
+### Performance Criteria (Unchanged)
+
 - ✅ GraphQL queries respond < 200ms
 - ✅ Database operations < 100ms
 - ✅ Cache hit ratio > 80%
 - ✅ Authentication validation < 50ms
 
+---
+
+## Updated Timeline: 20 days (was 16 days)
+
+**Rationale for Extension:**
+
+- **+4 days** for enhanced domain layer (Phase 0.5 integration)
+- **Better foundation** for application layer implementation
+- **More robust** business logic and validation
+- **Enterprise-grade** domain patterns from the start
+
+This enhanced Phase 1 now provides a **complete, enterprise-grade foundation** that will accelerate all subsequent phases by having proper domain services, business rules, and specifications in place from the beginning.
+
 ## Risk Mitigation
 
 ### Technical Risks
+
 - **Schema Composition Issues**: Daily schema validation prevents breaking changes
 - **Authentication Complexity**: Step-by-step Cognito integration with testing
 - **Database Performance**: Early optimization and indexing strategy
 
 ### Delivery Risks
+
 - **Scope Creep**: Strict daily deliverables and acceptance criteria
 - **Dependencies**: Parallel development where possible
 - **Integration Issues**: Daily integration testing and validation
@@ -517,8 +697,8 @@ This phase establishes the GraphQL Federation foundation with AWS AppSync as the
 ## Daily Standup Template
 
 **Yesterday**: What was completed from the plan
-**Today**: Current day's specific tasks and deliverables  
+**Today**: Current day's specific tasks and deliverables
 **Blockers**: Any impediments to completing today's acceptance criteria
 **Integration**: Any cross-service dependencies or issues
 
-This step-by-step plan provides clear daily objectives, specific deliverables, and measurable acceptance criteria for successful Phase 1 completion. 
+This step-by-step plan provides clear daily objectives, specific deliverables, and measurable acceptance criteria for successful Phase 1 completion.

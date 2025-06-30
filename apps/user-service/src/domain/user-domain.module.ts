@@ -1,9 +1,20 @@
 import { Module } from '@nestjs/common';
+import { UserFactory } from './factories';
 
 @Module({
   providers: [
-    // Domain factories and services will be added in Day 5-6
+    // Domain Factories
+    UserFactory,
+
+    // Domain Services (will be added as we need them)
+    // UserDomainService,
   ],
-  exports: [],
+  exports: [
+    // Export factories for use in application layer
+    UserFactory,
+
+    // Export domain services
+    // UserDomainService,
+  ],
 })
 export class UserDomainModule {}
