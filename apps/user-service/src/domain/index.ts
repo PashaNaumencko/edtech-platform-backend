@@ -1,26 +1,29 @@
-// Value Objects
-export * from './value-objects';
-
-// Entities
+// Domain entities
 export * from './entities';
 
-// Events
+// Value objects
+export * from './value-objects';
+
+// Domain events
 export * from './events';
 
-// Repositories
+// Repository interfaces
 export * from './repositories';
 
-// Factories
+// Domain factories
 export * from './factories';
 
-// Services
-export * from './services';
-
-// Business Rules
+// Business rules
 export * from './rules';
 
-// Domain Errors
+// Domain services
+export * from './services';
+
+// Domain errors
 export * from './errors';
+
+// Specifications
+export * from './specifications';
 
 // Domain Module
 export { UserDomainModule } from './user-domain.module';
