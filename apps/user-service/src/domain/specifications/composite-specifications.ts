@@ -1,16 +1,16 @@
 import { User } from '../entities/user.entity';
 import { BaseSpecification } from './specification.interface';
 import {
-    ActiveUserSpecification,
-    CompleteProfileSpecification,
-    EducationalUserSpecification,
-    EligibleTutorSpecification,
-    EmailDomainSpecification,
-    LongTimeUserSpecification,
-    PremiumEligibleSpecification,
-    RecentlyRegisteredSpecification,
-    StudentUserSpecification,
-    TutorUserSpecification
+  ActiveUserSpecification,
+  CompleteProfileSpecification,
+  EducationalUserSpecification,
+  EligibleTutorSpecification,
+  EmailDomainSpecification,
+  LongTimeUserSpecification,
+  PremiumEligibleSpecification,
+  RecentlyRegisteredSpecification,
+  StudentUserSpecification,
+  TutorUserSpecification
 } from './user.specifications';
 
 /**
@@ -21,10 +21,10 @@ export class UserCompositeSpecifications {
   /**
    * Active students eligible to become tutors
    */
-  static activeStudentEligibleForTutor(customMinDays?: number): BaseSpecification<User> {
+  static activeStudentEligibleForTutor(): BaseSpecification<User> {
     return new ActiveUserSpecification()
       .and(new StudentUserSpecification())
-      .and(new EligibleTutorSpecification(customMinDays));
+      .and(new EligibleTutorSpecification());
   }
 
   /**
@@ -75,10 +75,10 @@ export class UserCompositeSpecifications {
   /**
    * Users from specific domain who could be tutors
    */
-  static domainUsersEligibleForTutor(domain: string, customMinDays?: number): BaseSpecification<User> {
+  static domainUsersEligibleForTutor(domain: string): BaseSpecification<User> {
     return new EmailDomainSpecification(domain)
       .and(new ActiveUserSpecification())
-      .and(new EligibleTutorSpecification(customMinDays));
+      .and(new EligibleTutorSpecification());
   }
 
   /**

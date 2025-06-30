@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CreateUserProps, User } from '../entities/user.entity';
-import { UserRoleType } from '../value-objects';
+import { UserRole } from '../value-objects';
 
 export interface CreateStudentProps {
   email: string;
@@ -20,10 +20,11 @@ export interface UserPersistenceData {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
-  isActive: boolean;
+  role: UserRole;
+  status: string;
   createdAt: Date;
   updatedAt: Date;
+  lastLoginAt?: Date;
 }
 
 @Injectable()
@@ -34,7 +35,7 @@ export class UserFactory {
   public createStudent(props: CreateStudentProps): User {
     return User.create({
       ...props,
-      role: UserRoleType.STUDENT,
+      role: UserRole.student(),
     });
   }
 
@@ -46,7 +47,7 @@ export class UserFactory {
       email: props.email,
       firstName: props.firstName,
       lastName: props.lastName,
-      role: UserRoleType.TUTOR,
+      role: UserRole.tutor(),
     });
   }
 
@@ -61,7 +62,7 @@ export class UserFactory {
 
     return User.create({
       ...props,
-      role: UserRoleType.ADMIN,
+      role: UserRole.admin(),
     });
   }
 
@@ -73,7 +74,7 @@ export class UserFactory {
 
     // Example business logic: certain domains are automatically tutors
     const tutorDomains = ['educator.com', 'university.edu', 'teacher.org'];
-    const role = tutorDomains.includes(emailDomain) ? UserRoleType.TUTOR : UserRoleType.STUDENT;
+    const role = tutorDomains.includes(emailDomain) ? UserRole.tutor() : UserRole.student();
 
     return User.create({
       ...props,
@@ -85,6 +86,16 @@ export class UserFactory {
    * Reconstructs a user from persistence data
    */
   public fromPersistence(data: UserPersistenceData): User {
-    return User.fromPersistence(data);
+    return User.fromPersistence({
+      id: data.id,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role.value,
+      status: data.status,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      lastLoginAt: data.lastLoginAt
+    });
   }
 }

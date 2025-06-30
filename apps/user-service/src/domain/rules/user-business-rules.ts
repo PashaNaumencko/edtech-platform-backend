@@ -24,21 +24,25 @@ export class UserBusinessRules {
    * Determines if a user can become a tutor
    * Single source of truth for tutor eligibility
    */
-  static canBecomeTutor(user: User, customMinDays?: number): boolean {
-    // Must be active student
-    if (!user.isActive || !user.role.isStudent()) {
+  static canBecomeTutor(user: User): boolean {
+    // Must be active
+    if (!user.isActive()) {
       return false;
     }
 
-    // Check registration time (allows custom requirements)
-    const minDays = customMinDays ?? this.MIN_REGISTRATION_DAYS_FOR_TUTOR;
-    const daysSinceRegistration = this.calculateDaysSince(user.createdAt);
-
-    if (daysSinceRegistration < minDays) {
+    // Must be student (not already tutor/admin)
+    if (!user.isStudent()) {
       return false;
     }
 
-    return true;
+    // Check account age requirement
+    const accountAge = this.getAccountAge(user);
+    if (accountAge < this.MIN_REGISTRATION_DAYS_FOR_TUTOR) {
+      return false;
+    }
+
+    // Delegate profile completeness to UserProfile value object
+    return user.profile.isCompleteForTutoring();
   }
 
   /**
@@ -57,7 +61,7 @@ export class UserBusinessRules {
     }
 
     // Must be active to change roles
-    if (!user.isActive) {
+    if (!user.isActive()) {
       return false;
     }
 
@@ -75,7 +79,7 @@ export class UserBusinessRules {
    */
   static canChangeEmail(user: User, newEmail: Email, lastEmailChange?: Date): boolean {
     // Must be active
-    if (!user.isActive) {
+    if (!user.isActive()) {
       return false;
     }
 
@@ -99,7 +103,7 @@ export class UserBusinessRules {
    * Determines if an account should be locked due to failed attempts
    */
   static shouldLockAccount(user: User, failedAttempts: number): boolean {
-    if (!user.isActive) {
+    if (!user.isActive()) {
       return true; // Already inactive
     }
 
@@ -151,10 +155,10 @@ export class UserBusinessRules {
 
   /**
    * Checks if user profile meets basic completeness requirements
+   * Delegates to UserProfile for actual validation logic
    */
   static isProfileComplete(user: User): boolean {
-    // Basic checks - could be enhanced with more fields
-    return !!(user.isActive && user.email.value && user.name.firstName && user.name.lastName);
+    return user.profile.isCompleteForTutoring();
   }
 
   // Helper method - single implementation

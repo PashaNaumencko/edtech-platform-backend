@@ -2,6 +2,7 @@ export enum UserRoleType {
   STUDENT = 'student',
   TUTOR = 'tutor',
   ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
 }
 
 export class UserRole {
@@ -35,6 +36,10 @@ export class UserRole {
     return new UserRole(UserRoleType.ADMIN);
   }
 
+  public static superadmin(): UserRole {
+    return new UserRole(UserRoleType.SUPERADMIN);
+  }
+
   public get value(): UserRoleType {
     return this._value;
   }
@@ -51,12 +56,16 @@ export class UserRole {
     return this._value === UserRoleType.ADMIN;
   }
 
+  public isSuperadmin(): boolean {
+    return this._value === UserRoleType.SUPERADMIN;
+  }
+
   public canManageUsers(): boolean {
-    return this.isAdmin();
+    return this.isAdmin() || this.isSuperadmin();
   }
 
   public canTeach(): boolean {
-    return this.isTutor() || this.isAdmin();
+    return this.isTutor() || this.isAdmin() || this.isSuperadmin();
   }
 
   public equals(other: UserRole): boolean {

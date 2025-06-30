@@ -8,7 +8,7 @@ import { BaseSpecification } from './specification.interface';
  */
 export class ActiveUserSpecification extends BaseSpecification<User> {
   isSatisfiedBy(user: User): boolean {
-    return user.isActive;
+    return user.isActive();
   }
 }
 
@@ -25,12 +25,8 @@ export class InactiveUserSpecification extends BaseSpecification<User> {
  * Specification for users eligible to become tutors
  */
 export class EligibleTutorSpecification extends BaseSpecification<User> {
-  constructor(private readonly customMinDays?: number) {
-    super();
-  }
-
   isSatisfiedBy(user: User): boolean {
-    return UserBusinessRules.canBecomeTutor(user, this.customMinDays);
+    return UserBusinessRules.canBecomeTutor(user);
   }
 }
 

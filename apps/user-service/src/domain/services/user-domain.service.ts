@@ -6,7 +6,7 @@ import {
   UserRequirementsNotMetError
 } from '../errors/user.errors';
 import { UserBusinessRules } from '../rules/user-business-rules';
-import { UserRole, UserRoleType } from '../value-objects';
+import { UserRole } from '../value-objects';
 
 export interface ReputationFactors {
   reviews: Array<{ rating: number; verified: boolean }>;
@@ -29,7 +29,7 @@ export class UserDomainService {
     let score = 0;
 
     // Base score for being active
-    if (user.isActive) {
+    if (user.isActive()) {
       score += 10;
     }
 
@@ -110,32 +110,38 @@ export class UserDomainService {
 
   /**
    * Validates tutor promotion requirements with domain-specific errors
+   * Uses centralized business rules to avoid duplication
    */
   validateTutorPromotionRequirements(user: User, customMinDays?: number): void {
     this.logger.debug(`Validating tutor promotion requirements for user ${user.id.value}`);
 
-    if (!user.isActive) {
-      throw new UserRequirementsNotMetError('tutor promotion', ['must be active user']);
-    }
+    // Use business rules for comprehensive validation
+    if (!UserBusinessRules.canBecomeTutor(user)) {
+      const accountAge = UserBusinessRules.getAccountAge(user);
+      const minDays = customMinDays ?? UserBusinessRules.MIN_REGISTRATION_DAYS_FOR_TUTOR;
 
-    if (user.role.isTutor() || user.role.isAdmin()) {
-      throw new BusinessRuleViolationError(
-        'RoleEscalationPrevention',
-        'User already has elevated role'
-      );
-    }
+      const reasons: string[] = [];
 
-    const minDays = customMinDays ?? UserBusinessRules.MIN_REGISTRATION_DAYS_FOR_TUTOR;
-    const accountAge = UserBusinessRules.getAccountAge(user);
+      if (!user.isActive) {
+        reasons.push('must be active user');
+      }
 
-    if (accountAge < minDays) {
-      throw new UserRequirementsNotMetError('tutor promotion', [
-        `minimum ${minDays} days registration (current: ${accountAge} days)`
-      ]);
-    }
+      if (user.role.isTutor() || user.role.isAdmin()) {
+        throw new BusinessRuleViolationError(
+          'RoleEscalationPrevention',
+          'User already has elevated role'
+        );
+      }
 
-    if (!UserBusinessRules.isProfileComplete(user)) {
-      throw new UserRequirementsNotMetError('tutor promotion', ['complete profile']);
+      if (accountAge < minDays) {
+        reasons.push(`minimum ${minDays} days registration (current: ${accountAge} days)`);
+      }
+
+      if (!user.profile.isCompleteForTutoring()) {
+        reasons.push('complete profile');
+      }
+
+      throw new UserRequirementsNotMetError('tutor promotion', reasons);
     }
 
     this.logger.debug('Tutor promotion requirements validated successfully');
@@ -226,7 +232,7 @@ export class UserDomainService {
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
-      role: UserRoleType.ADMIN,
+      role: UserRole.admin(),
     });
 
     this.logger.warn(`Admin user created: ${adminUser.id.value} - ${adminUser.email.value}`);
