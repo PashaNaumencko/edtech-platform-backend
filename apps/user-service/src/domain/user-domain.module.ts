@@ -1,18 +1,16 @@
-import { Module } from '@nestjs/common';
-import { CqrsModule } from '@nestjs/cqrs';
-import { UserDomainService } from './services';
+import { Module } from "@nestjs/common";
+import { UserDomainService } from "./services/user-domain.service";
 
+/**
+ * User Domain Module
+ *
+ * Provides:
+ * - Consolidated domain service with all business logic
+ * - User aggregate and value objects
+ * - Domain events and error handling
+ */
 @Module({
-  imports: [CqrsModule],
-  providers: [
-    // Domain services
-    UserDomainService,
-  ],
-  exports: [
-    // Export services for application layer
-    UserDomainService,
-    // Export CqrsModule to make it available to importing modules
-    CqrsModule,
-  ],
+  providers: [UserDomainService],
+  exports: [UserDomainService],
 })
 export class UserDomainModule {}

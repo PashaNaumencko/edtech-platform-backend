@@ -1,20 +1,19 @@
-import { AggregateRoot } from '@nestjs/cqrs';
+import { AggregateRoot } from "@nestjs/cqrs";
 import {
   UserActivatedEvent,
   UserCreatedEvent,
   UserDeactivatedEvent,
   UserUpdatedEvent,
-} from '../events';
-import { UserBusinessRules } from '../rules/user-business-rules';
-import { Email, UserId, UserName, UserRole, UserRoleType } from '../value-objects';
-import { UserPreferences } from '../value-objects/user-preferences.value-object';
-import { UserProfile } from '../value-objects/user-profile.value-object';
+} from "../events";
+import { Email, UserId, UserName, UserRole, UserRoleType } from "../value-objects";
+import { UserPreferences } from "../value-objects/user-preferences.value-object";
+import { UserProfile } from "../value-objects/user-profile.value-object";
 
 export enum UserStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
-  SUSPENDED = 'suspended',
-  PENDING_VERIFICATION = 'pending_verification'
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  SUSPENDED = "suspended",
+  PENDING_VERIFICATION = "pending_verification",
 }
 
 interface CreateUserData {
@@ -57,6 +56,17 @@ export interface UpdateUserProps {
   email?: string;
 }
 
+/**
+ * User Aggregate Root
+ *
+ * Focuses on:
+ * - State management and data integrity
+ * - Basic domain operations and state transitions
+ * - Event emission for domain changes
+ * - Simple query methods
+ *
+ * Complex business logic is delegated to UserDomainService
+ */
 export class User extends AggregateRoot {
   private _id: UserId;
   private _email: Email;
@@ -79,7 +89,7 @@ export class User extends AggregateRoot {
     profile: UserProfile,
     createdAt?: Date,
     updatedAt?: Date,
-    lastLoginAt?: Date
+    lastLoginAt?: Date,
   ) {
     super();
     this._id = id;
@@ -106,25 +116,11 @@ export class User extends AggregateRoot {
     const preferences = data.preferences || UserPreferences.createDefault();
     const profile = data.profile || UserProfile.createMinimal();
 
-    const user = new User(
-      userId,
-      email,
-      name,
-      role,
-      status,
-      preferences,
-      profile,
-      now,
-      now
-    );
+    const user = new User(userId, email, name, role, status, preferences, profile, now, now);
 
-    user.apply(new UserCreatedEvent(
-      userId.value,
-      email.value,
-      name.firstName,
-      name.lastName,
-      role.value
-    ));
+    user.apply(
+      new UserCreatedEvent(userId.value, email.value, name.firstName, name.lastName, role.value),
+    );
     return user;
   }
 
@@ -151,10 +147,13 @@ export class User extends AggregateRoot {
       data.profile || UserProfile.createMinimal(),
       data.createdAt,
       data.updatedAt,
-      data.lastLoginAt
+      data.lastLoginAt,
     );
   }
 
+  /**
+   * Updates basic user information
+   */
   public update(props: UpdateUserProps, updatedBy: string): void {
     const changes: Record<string, any> = {};
 
@@ -178,9 +177,12 @@ export class User extends AggregateRoot {
     }
   }
 
+  /**
+   * Activates the user account
+   */
   public activate(activatedBy?: string): void {
     if (this._status === UserStatus.ACTIVE) {
-      throw new Error('User is already active');
+      throw new Error("User is already active");
     }
 
     this._status = UserStatus.ACTIVE;
@@ -188,9 +190,12 @@ export class User extends AggregateRoot {
     this.apply(new UserActivatedEvent(this._id.value, this._email.value, activatedBy));
   }
 
+  /**
+   * Deactivates the user account
+   */
   public deactivate(reason?: string, deactivatedBy?: string): void {
     if (this._status === UserStatus.INACTIVE) {
-      throw new Error('User is already inactive');
+      throw new Error("User is already inactive");
     }
 
     this._status = UserStatus.INACTIVE;
@@ -201,12 +206,15 @@ export class User extends AggregateRoot {
   /**
    * Suspends the user account
    */
-  suspend(suspendedBy: string = 'system'): void {
+  public suspend(suspendedBy: string = "system"): void {
     this._status = UserStatus.SUSPENDED;
     this._updatedAt = new Date();
     this.apply(new UserUpdatedEvent(this._id.value, { status: UserStatus.SUSPENDED }, suspendedBy));
   }
 
+  /**
+   * Records user login timestamp
+   */
   public recordLogin(): void {
     this._lastLoginAt = new Date();
     this._updatedAt = new Date();
@@ -215,7 +223,7 @@ export class User extends AggregateRoot {
   /**
    * Updates user preferences
    */
-  updatePreferences(preferences: UserPreferences, updatedBy: string = 'user'): void {
+  public updatePreferences(preferences: UserPreferences, updatedBy: string = "user"): void {
     if (!this._preferences.equals(preferences)) {
       this._preferences = preferences;
       this._updatedAt = new Date();
@@ -226,7 +234,7 @@ export class User extends AggregateRoot {
   /**
    * Updates user profile
    */
-  updateProfile(profile: UserProfile, updatedBy: string = 'user'): void {
+  public updateProfile(profile: UserProfile, updatedBy: string = "user"): void {
     if (!this._profile.equals(profile)) {
       this._profile = profile;
       this._updatedAt = new Date();
@@ -235,60 +243,29 @@ export class User extends AggregateRoot {
   }
 
   /**
-   * Checks if user profile is complete enough for tutoring
-   * Delegates to UserProfile domain logic
+   * Changes user role with validation
    */
-  isEligibleForTutoring(): boolean {
-    // Must be active
-    if (this._status !== UserStatus.ACTIVE) {
-      return false;
+  public changeRole(newRole: UserRole, changedBy: string = "system"): void {
+    if (this._role.equals(newRole)) {
+      return;
     }
 
-    // Must have Student or Tutor role
-    if (![UserRole.student(), UserRole.tutor()].some(role => role.equals(this._role))) {
-      return false;
-    }
+    const oldRole = this._role;
+    this._role = newRole;
+    this._updatedAt = new Date();
 
-    // Delegate profile completeness check to UserProfile value object
-    return this._profile.isCompleteForTutoring();
+    this.apply(
+      new UserUpdatedEvent(
+        this._id.value,
+        {
+          role: { from: oldRole.value, to: newRole.value },
+        },
+        changedBy,
+      ),
+    );
   }
 
-  /**
-   * Checks if user can be promoted to tutor
-   * Uses business rules for comprehensive validation
-   */
-  canBePromotedToTutor(): boolean {
-    return UserBusinessRules.canBecomeTutor(this);
-  }
-
-  /**
-   * Gets user's age if available
-   */
-  getAge(): number | null {
-    return this._profile.age;
-  }
-
-  /**
-   * Checks if user has a specific skill
-   */
-  hasSkill(skillName: string): boolean {
-    return this._profile.hasSkill(skillName);
-  }
-
-  /**
-   * Gets profile completeness percentage
-   */
-  getProfileCompleteness(): number {
-    return this._profile.calculateCompleteness();
-  }
-
-  /**
-   * Checks if user should receive a notification
-   */
-  shouldReceiveNotification(notificationType: any): boolean {
-    return this._preferences.shouldReceiveNotification(notificationType);
-  }
-
+  // Basic query methods - keep these simple
   public isActive(): boolean {
     return this._status === UserStatus.ACTIVE;
   }
@@ -309,27 +286,7 @@ export class User extends AggregateRoot {
     return this._role.equals(UserRole.superadmin());
   }
 
-  public canBePromotedToAdmin(): boolean {
-    return this.isTutor() && this.isActive();
-  }
-
-  /**
-   * Changes user role with validation
-   */
-  changeRole(newRole: UserRole, changedBy: string = 'system'): void {
-    if (this._role.equals(newRole)) {
-      return;
-    }
-
-    const oldRole = this._role;
-    this._role = newRole;
-    this._updatedAt = new Date();
-
-    this.apply(new UserUpdatedEvent(this._id.value, {
-      role: { from: oldRole.value, to: newRole.value }
-    }, changedBy));
-  }
-
+  // Getters for accessing state
   public get id(): UserId {
     return this._id;
   }
@@ -370,6 +327,9 @@ export class User extends AggregateRoot {
     return this._lastLoginAt;
   }
 
+  /**
+   * Creates a snapshot for read operations
+   */
   public toSnapshot() {
     return {
       id: this._id.value,
@@ -387,6 +347,9 @@ export class User extends AggregateRoot {
     };
   }
 
+  /**
+   * Converts to persistence format
+   */
   public toPersistence(): UserPersistenceData {
     return {
       id: this._id.value,
@@ -399,7 +362,7 @@ export class User extends AggregateRoot {
       profile: this._profile,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
-      lastLoginAt: this._lastLoginAt
+      lastLoginAt: this._lastLoginAt,
     };
   }
 
