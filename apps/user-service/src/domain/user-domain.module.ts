@@ -6,6 +6,7 @@ import { UserDomainService } from "./services/user-domain.service";
  *
  * Provides:
  * - Consolidated domain service with all business logic
+ * - Simplified domain events compatible with NestJS/CQRS
  * - User aggregate and value objects
  * - Domain events and error handling
  */

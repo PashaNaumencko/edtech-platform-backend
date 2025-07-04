@@ -3,6 +3,7 @@ import {
   UserActivatedEvent,
   UserCreatedEvent,
   UserDeactivatedEvent,
+  UserRoleChangedEvent,
   UserUpdatedEvent,
 } from "../events";
 import { Email, UserId, UserName, UserRole, UserRoleType } from "../value-objects";
@@ -119,7 +120,14 @@ export class User extends AggregateRoot {
     const user = new User(userId, email, name, role, status, preferences, profile, now, now);
 
     user.apply(
-      new UserCreatedEvent(userId.value, email.value, name.firstName, name.lastName, role.value),
+      new UserCreatedEvent({
+        userId: userId.value,
+        email: email.value,
+        firstName: name.firstName,
+        lastName: name.lastName,
+        role: role.value,
+        status: status,
+      }),
     );
     return user;
   }
@@ -206,87 +214,84 @@ export class User extends AggregateRoot {
   /**
    * Suspends the user account
    */
-  public suspend(suspendedBy: string = "system"): void {
+  public suspend(): void {
     this._status = UserStatus.SUSPENDED;
     this._updatedAt = new Date();
-    this.apply(new UserUpdatedEvent(this._id.value, { status: UserStatus.SUSPENDED }, suspendedBy));
   }
 
   /**
-   * Records user login timestamp
+   * Records user login time
    */
   public recordLogin(): void {
     this._lastLoginAt = new Date();
-    this._updatedAt = new Date();
   }
 
   /**
    * Updates user preferences
    */
-  public updatePreferences(preferences: UserPreferences, updatedBy: string = "user"): void {
+  public updatePreferences(preferences: UserPreferences): void {
     if (!this._preferences.equals(preferences)) {
       this._preferences = preferences;
       this._updatedAt = new Date();
-      this.apply(new UserUpdatedEvent(this._id.value, { preferences: true }, updatedBy));
     }
   }
 
   /**
    * Updates user profile
    */
-  public updateProfile(profile: UserProfile, updatedBy: string = "user"): void {
+  public updateProfile(profile: UserProfile): void {
     if (!this._profile.equals(profile)) {
       this._profile = profile;
       this._updatedAt = new Date();
-      this.apply(new UserUpdatedEvent(this._id.value, { profile: true }, updatedBy));
     }
   }
 
   /**
-   * Changes user role with validation
+   * Changes user role
    */
   public changeRole(newRole: UserRole, changedBy: string = "system"): void {
     if (this._role.equals(newRole)) {
-      return;
+      throw new Error("User already has this role");
     }
 
     const oldRole = this._role;
     this._role = newRole;
     this._updatedAt = new Date();
 
+    // Apply role changed event with simplified payload
     this.apply(
-      new UserUpdatedEvent(
-        this._id.value,
-        {
-          role: { from: oldRole.value, to: newRole.value },
-        },
+      new UserRoleChangedEvent({
+        userId: this._id.value,
+        oldRole: oldRole.value,
+        newRole: newRole.value,
         changedBy,
-      ),
+        reason: "Role updated by " + changedBy,
+      }),
     );
   }
 
-  // Basic query methods - keep these simple
+  // Query methods
   public isActive(): boolean {
     return this._status === UserStatus.ACTIVE;
   }
 
   public isStudent(): boolean {
-    return this._role.equals(UserRole.student());
+    return this._role.isStudent();
   }
 
   public isTutor(): boolean {
-    return this._role.equals(UserRole.tutor());
+    return this._role.isTutor();
   }
 
   public isAdmin(): boolean {
-    return this._role.equals(UserRole.admin());
+    return this._role.isAdmin();
   }
 
   public isSuperadmin(): boolean {
-    return this._role.equals(UserRole.superadmin());
+    return this._role.isSuperadmin();
   }
 
-  // Getters for accessing state
+  // Getters
   public get id(): UserId {
     return this._id;
   }
@@ -328,7 +333,7 @@ export class User extends AggregateRoot {
   }
 
   /**
-   * Creates a snapshot for read operations
+   * Creates a snapshot for caching/serialization
    */
   public toSnapshot() {
     return {
@@ -336,14 +341,13 @@ export class User extends AggregateRoot {
       email: this._email.value,
       firstName: this._name.firstName,
       lastName: this._name.lastName,
-      fullName: this._name.fullName,
       role: this._role.value,
       status: this._status,
       preferences: this._preferences.toPersistence(),
       profile: this._profile.toPersistence(),
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt,
-      lastLoginAt: this._lastLoginAt,
+      createdAt: this._createdAt.toISOString(),
+      updatedAt: this._updatedAt.toISOString(),
+      lastLoginAt: this._lastLoginAt?.toISOString(),
     };
   }
 
@@ -367,6 +371,6 @@ export class User extends AggregateRoot {
   }
 
   public toString(): string {
-    return `User(id=${this._id.value}, email=${this._email.value}, role=${this._role.value}, status=${this._status})`;
+    return `User(${this._id.value}, ${this._email.value}, ${this._role.value})`;
   }
 }
