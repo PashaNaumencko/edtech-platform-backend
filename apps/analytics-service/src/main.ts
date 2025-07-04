@@ -1,8 +1,7 @@
-import { NestFactory } from '@nestjs/core';
-import { AnalyticsServiceModule } from './analytics-service.module';
+import { NestFactory } from "@nestjs/core";
+import { AnalyticsServiceModule } from "./analytics-service.module";
 
-async function bootstrap() {
+void (async () => {
   const app = await NestFactory.create(AnalyticsServiceModule);
   await app.listen(process.env.port ?? 3000);
-}
-bootstrap();
+})();

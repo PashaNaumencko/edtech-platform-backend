@@ -41,7 +41,9 @@
       "@edtech/analytics": ["libs/analytics/src"],
       "@edtech/analytics/*": ["libs/analytics/src/*"],
       "@edtech/config": ["libs/config/src"],
-      "@edtech/config/*": ["libs/config/src/*"]
+      "@edtech/config/*": ["libs/config/src/*"],
+      "@edtech/service-auth": ["libs/service-auth/src"],
+      "@edtech/service-auth/*": ["libs/service-auth/src/*"]
     }
   }
 }

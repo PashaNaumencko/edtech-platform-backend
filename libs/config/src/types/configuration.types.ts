@@ -5,13 +5,13 @@
 export interface BaseAppConfiguration {
   port: number;
   corsOrigins: string[];
-  environment: 'development' | 'staging' | 'production' | 'test';
+  environment: "development" | "staging" | "production" | "test";
   version: string;
 }
 
 // Database Configurations (following our naming convention guide)
 export interface PostgresConfiguration {
-  type: 'postgres';
+  type: "postgres";
   host: string;
   port: number;
   username: string;
@@ -117,4 +117,37 @@ export interface NotificationServiceConfiguration {
 export interface ReviewsServiceConfiguration {
   app: BaseAppConfiguration;
   postgres: PostgresConfiguration;
+}
+
+/**
+ * Service Authentication Configuration
+ * Shared across all microservices for consistent service-to-service authentication
+ */
+export interface ServiceAuthConfiguration {
+  serviceName: string;
+  authMethod: "cognito" | "iam";
+  cognito: {
+    userPoolId?: string;
+    clientId?: string;
+    clientSecret?: string;
+    region: string;
+  };
+  iam: {
+    roleArn?: string;
+    sessionDuration: number;
+    region: string;
+  };
+  aws: {
+    region: string;
+    endpoint?: string;
+  };
+  development: {
+    enabled: boolean;
+    mockTokenExpiry: number;
+  };
+  security: {
+    tokenExpiry: number;
+    maxRetries: number;
+    retryDelay: number;
+  };
 }

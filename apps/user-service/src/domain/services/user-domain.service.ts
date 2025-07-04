@@ -242,7 +242,12 @@ export class UserDomainService {
     if (user.isAdmin()) {
       userTier = "admin";
     } else if (user.isTutor() && reputationFactors) {
-      userTier = this.getTutorTier(reputationFactors?.completedSessions || 0, reputationScore || 0);
+      userTier = this.getTutorTier(
+        Array.isArray(reputationFactors.completedSessions)
+          ? reputationFactors.completedSessions.length
+          : 0,
+        reputationScore || 0
+      );
     }
 
     return {

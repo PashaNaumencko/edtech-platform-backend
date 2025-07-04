@@ -8,6 +8,7 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 
 import {
@@ -17,6 +18,7 @@ import {
   SuccessResponseDto,
 } from "@edtech/types";
 
+import { ServiceAuthGuard } from "@edtech/service-auth";
 import {
   BecomeTutorRequestDto,
   BecomeTutorResponseDto,
@@ -34,12 +36,14 @@ import { CreateUserUseCase } from "../../../application/use-cases/create-user/cr
 import { UpdateUserProfileUseCase } from "../../../application/use-cases/update-user-profile/update-user-profile.usecase";
 
 /**
- * Users Controller
+ * Internal Users Controller
  *
- * Provides HTTP endpoints for user management operations.
- * Demonstrates usage of all base response DTOs.
+ * Provides internal HTTP endpoints for user management operations.
+ * These endpoints are only accessible within the private VPC for service-to-service communication.
+ * External access is handled through GraphQL Federation (AppSync).
  */
-@Controller("users")
+@Controller("internal/users")
+@UseGuards(ServiceAuthGuard)
 export class UsersController {
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
@@ -48,7 +52,7 @@ export class UsersController {
   ) {}
 
   /**
-   * Create a new user
+   * Create a new user (internal service call)
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -67,7 +71,7 @@ export class UsersController {
   }
 
   /**
-   * Update user profile
+   * Update user profile (internal service call)
    */
   @Put(":userId/profile")
   @HttpCode(HttpStatus.OK)
@@ -92,7 +96,7 @@ export class UsersController {
   }
 
   /**
-   * Promote user to tutor
+   * Promote user to tutor (internal service call)
    */
   @Post(":userId/become-tutor")
   @HttpCode(HttpStatus.OK)
@@ -117,7 +121,7 @@ export class UsersController {
   }
 
   /**
-   * Get user by ID (mock implementation for now)
+   * Get user by ID (internal service call)
    */
   @Get(":userId")
   @HttpCode(HttpStatus.OK)
@@ -137,7 +141,7 @@ export class UsersController {
   }
 
   /**
-   * Get all users with pagination (mock implementation for now)
+   * Get all users with pagination (internal service call)
    */
   @Get()
   @HttpCode(HttpStatus.OK)

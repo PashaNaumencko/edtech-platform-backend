@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:libs": "nest build types && nest build utils && nest build events && nest build database && nest build domain && nest build auth && nest build security && nest build communication && nest build validation && nest build notifications && nest build analytics",
+    "build:libs": "nest build types && nest build utils && nest build events && nest build database && nest build domain && nest build auth && nest build security && nest build communication && nest build validation && nest build notifications && nest build analytics && nest build service-auth",
     "build:check": "tsc --noEmit",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -54,7 +54,9 @@
     "@apollo/federation": "^0.38.1",
     "@apollo/gateway": "^2.11.2",
     "@apollo/subgraph": "^2.11.2",
+    "@aws-sdk/client-cognito-identity-provider": "^3.840.0",
     "@aws-sdk/client-eventbridge": "^3.840.0",
+    "@aws-sdk/client-sts": "^3.840.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^11.0.1",
@@ -64,6 +66,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "@nestjs/websockets": "^11.0.1",
     "@types/pg": "^8.15.4",
+    "aws-jwt-verify": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "pg": "^8.16.3",
@@ -138,7 +141,8 @@
       "^@edtech/validation(|/.*)$": "<rootDir>/libs/validation/src/$1",
       "^@edtech/notifications(|/.*)$": "<rootDir>/libs/notifications/src/$1",
       "^@edtech/analytics(|/.*)$": "<rootDir>/libs/analytics/src/$1",
-      "^@edtech/config(|/.*)$": "<rootDir>/libs/config/src/$1"
+      "^@edtech/config(|/.*)$": "<rootDir>/libs/config/src/$1",
+      "^@edtech/service-auth(|/.*)$": "<rootDir>/libs/service-auth/src/$1"
     }
   }
 }

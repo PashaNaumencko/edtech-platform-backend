@@ -1,52 +1,52 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class AuthService {
   // JWT Token Management
-  generateToken(payload: any): string {
+  generateToken(): string {
     // Implementation for JWT token generation
-    return 'jwt-token';
+    return "jwt-token";
   }
 
-  validateToken(token: string): boolean {
+  validateToken(): boolean {
     // Implementation for JWT token validation
     return true;
   }
 
   // OAuth Integration
-  handleGoogleOAuth(code: string): Promise<any> {
+  handleGoogleOAuth(): Promise<any> {
     // Implementation for Google OAuth flow
     return Promise.resolve({});
   }
 
-  handleFacebookOAuth(code: string): Promise<any> {
+  handleFacebookOAuth(): Promise<any> {
     // Implementation for Facebook OAuth flow
     return Promise.resolve({});
   }
 
-  handleAppleOAuth(code: string): Promise<any> {
+  handleAppleOAuth(): Promise<any> {
     // Implementation for Apple OAuth flow
     return Promise.resolve({});
   }
 
   // Session Management
-  createSession(userId: string): string {
+  createSession(): string {
     // Implementation for session creation
-    return 'session-id';
+    return "session-id";
   }
 
-  validateSession(sessionId: string): boolean {
+  validateSession(): boolean {
     // Implementation for session validation
     return true;
   }
 
   // Password Management
-  hashPassword(password: string): string {
+  hashPassword(): string {
     // Implementation for password hashing
-    return 'hashed-password';
+    return "hashed-password";
   }
 
-  verifyPassword(password: string, hash: string): boolean {
+  verifyPassword(): boolean {
     // Implementation for password verification
     return true;
   }

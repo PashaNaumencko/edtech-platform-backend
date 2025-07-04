@@ -28,7 +28,7 @@ export class UserPreferencesChangedEvent extends BaseDomainEvent {
       correlationId?: string;
       causationId?: string;
       userId?: string;
-    } = {},
+    } = {}
   ) {
     super(
       UserPreferencesChangedEvent.EVENT_NAME,
@@ -37,7 +37,7 @@ export class UserPreferencesChangedEvent extends BaseDomainEvent {
       {
         ...options,
         userId: payload.userId,
-      },
+      }
     );
   }
 
@@ -47,6 +47,6 @@ export class UserPreferencesChangedEvent extends BaseDomainEvent {
   }
 
   get changeCount(): number {
-    return this.payload.changes.length;
+    return Array.isArray(this.payload.changes) ? this.payload.changes.length : 0;
   }
 }

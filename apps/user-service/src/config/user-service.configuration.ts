@@ -1,15 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   BaseConfigurationService,
-  UserServiceConfiguration,
-  PostgresConfiguration,
-  RedisConfiguration,
   CognitoConfiguration,
-  S3Configuration,
   EmailConfiguration,
   EventBridgeConfiguration,
-} from '@edtech/config';
+  PostgresConfiguration,
+  RedisConfiguration,
+  S3Configuration,
+  UserServiceConfiguration,
+} from "@edtech/config";
+import { ServiceAuthConfig } from "@edtech/service-auth";
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UserServiceConfigurationService extends BaseConfigurationService<UserServiceConfiguration> {
@@ -30,27 +31,31 @@ export class UserServiceConfigurationService extends BaseConfigurationService<Us
   }
 
   get postgres(): PostgresConfiguration {
-    return this.configService.get<PostgresConfiguration>('postgres')!;
+    return this.configService.get<PostgresConfiguration>("postgres")!;
   }
 
   get redis(): RedisConfiguration {
-    return this.configService.get<RedisConfiguration>('redis')!;
+    return this.configService.get<RedisConfiguration>("redis")!;
   }
 
   get cognito(): CognitoConfiguration {
-    return this.configService.get<CognitoConfiguration>('cognito')!;
+    return this.configService.get<CognitoConfiguration>("cognito")!;
   }
 
   get s3(): S3Configuration {
-    return this.configService.get<S3Configuration>('s3')!;
+    return this.configService.get<S3Configuration>("s3")!;
   }
 
   get email(): EmailConfiguration {
-    return this.configService.get<EmailConfiguration>('email')!;
+    return this.configService.get<EmailConfiguration>("email")!;
   }
 
   get eventBridge(): EventBridgeConfiguration {
-    return this.configService.get<EventBridgeConfiguration>('eventBridge')!;
+    return this.configService.get<EventBridgeConfiguration>("eventBridge")!;
+  }
+
+  get serviceAuth(): ServiceAuthConfig {
+    return this.configService.get<ServiceAuthConfig>("serviceAuth")!;
   }
 
   get isEmailEnabled(): boolean {
@@ -65,12 +70,16 @@ export class UserServiceConfigurationService extends BaseConfigurationService<Us
     return Boolean(this.cognito.userPoolId && this.cognito.clientId);
   }
 
+  get isServiceAuthEnabled(): boolean {
+    return Boolean(this.serviceAuth.authMethod && this.serviceAuth.serviceName);
+  }
+
   get postgresConnectionInfo(): string {
     return `postgres://${this.postgres.username}:***@${this.postgres.host}:${this.postgres.port}/${this.postgres.database}`;
   }
 
   get redisConnectionInfo(): string {
-    const auth = this.redis.password ? `:${this.redis.password}@` : '';
+    const auth = this.redis.password ? `:${this.redis.password}@` : "";
     return `redis://${auth}${this.redis.host}:${this.redis.port}/${this.redis.db}`;
   }
 }

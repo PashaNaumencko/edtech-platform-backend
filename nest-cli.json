@@ -199,6 +199,15 @@
         "tsConfigPath": "libs/config/tsconfig.lib.json"
       }
     },
+    "service-auth": {
+      "type": "library",
+      "root": "libs/service-auth",
+      "entryFile": "index",
+      "sourceRoot": "libs/service-auth/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/service-auth/tsconfig.lib.json"
+      }
+    },
     "tutor-matching-service": {
       "type": "application",
       "root": "apps/tutor-matching-service",
