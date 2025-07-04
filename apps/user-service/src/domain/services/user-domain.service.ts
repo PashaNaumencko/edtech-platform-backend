@@ -1,36 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { User, UserStatus } from "../entities/user.entity";
+import { User, UserRoleType, UserStatus } from "../entities/user.entity";
 import {
   BusinessRuleViolationError,
   UnauthorizedRoleTransitionError,
   UserRequirementsNotMetError,
 } from "../errors/user.errors";
-import { Email, UserRole } from "../value-objects";
-
-export interface ReputationFactors {
-  reviews: Array<{ rating: number; verified: boolean }>;
-  completedSessions: number;
-  responseTime: number; // in hours
-  cancellationRate: number; // percentage
-}
-
-export interface UserMetrics {
-  accountAge: number;
-  isEligibleForTutor: boolean;
-  isEligibleForPremium: boolean;
-  profileCompleteness: number;
-  userTier: string;
-  reputationScore?: number;
-}
 
 /**
- * Consolidated User Domain Service
+ * Simplified User Domain Service
  *
- * Single source of truth for all user domain logic including:
- * - Business rule validation
- * - Complex calculations
- * - Cross-entity operations
- * - Domain-specific workflows
+ * Provides business logic for user operations.
+ * Focuses on essential functionality for Day 13.
  */
 @Injectable()
 export class UserDomainService {
@@ -46,18 +26,18 @@ export class UserDomainService {
 
   /**
    * Determines if a user can become a tutor
-   * Consolidates all tutoring eligibility logic
+   * Simplified version for Day 13
    */
   canBecomeTutor(user: User): boolean {
     // Must be active
     if (!user.isActive()) {
-      this.logger.debug(`User ${user.id.value} is not active`);
+      this.logger.debug(`User ${user.id} is not active`);
       return false;
     }
 
     // Must be student (not already tutor/admin)
     if (!user.isStudent()) {
-      this.logger.debug(`User ${user.id.value} is not a student`);
+      this.logger.debug(`User ${user.id} is not a student`);
       return false;
     }
 
@@ -65,41 +45,20 @@ export class UserDomainService {
     const accountAge = this.calculateAccountAge(user);
     if (accountAge < UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR) {
       this.logger.debug(
-        `User ${user.id.value} account age ${accountAge} days is below minimum ${UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR}`,
+        `User ${user.id} account age ${accountAge} days is below minimum ${UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR}`
       );
       return false;
     }
 
-    // Check age requirement if available
-    const userAge = user.profile.age;
-    if (userAge && userAge < UserDomainService.MIN_AGE_FOR_TUTOR) {
-      this.logger.debug(
-        `User ${user.id.value} age ${userAge} is below minimum ${UserDomainService.MIN_AGE_FOR_TUTOR}`,
-      );
+    // Check bio requirement
+    if (!user.bio || user.bio.length < 50) {
+      this.logger.debug(`User ${user.id} bio is insufficient for tutoring`);
       return false;
     }
 
-    // Check profile completeness (minimum 70%, bio, skills, education/achievements)
-    const completeness = user.profile.calculateCompleteness();
-    if (completeness < 70) {
-      this.logger.debug(`User ${user.id.value} profile completeness ${completeness}% is below 70%`);
-      return false;
-    }
-
-    if (!user.profile.bio || user.profile.bio.length < 50) {
-      this.logger.debug(`User ${user.id.value} bio is insufficient for tutoring`);
-      return false;
-    }
-
-    if (user.profile.skills.length < 3) {
-      this.logger.debug(
-        `User ${user.id.value} has only ${user.profile.skills.length} skills (minimum 3)`,
-      );
-      return false;
-    }
-
-    if (user.profile.education.length === 0 && user.profile.achievements.length === 0) {
-      this.logger.debug(`User ${user.id.value} lacks education or achievements`);
+    // Check skills requirement
+    if (user.skills.length < 3) {
+      this.logger.debug(`User ${user.id} has only ${user.skills.length} skills (minimum 3)`);
       return false;
     }
 
@@ -107,79 +66,19 @@ export class UserDomainService {
   }
 
   /**
-   * Validates if a role transition is allowed
+   * Calculates account age in days
    */
-  canTransitionRole(fromRole: UserRole, toRole: UserRole, user: User): boolean {
-    // Cannot transition to same role
-    if (fromRole.equals(toRole)) {
-      return false;
-    }
-
-    // Admin role changes are superadmin-only operations
-    if (toRole.isAdmin() || fromRole.isAdmin()) {
-      return false;
-    }
-
-    // Must be active to change roles
-    if (!user.isActive()) {
-      return false;
-    }
-
-    // Student -> Tutor: Check eligibility
-    if (fromRole.isStudent() && toRole.isTutor()) {
-      return this.canBecomeTutor(user);
-    }
-
-    return true;
-  }
-
-  /**
-   * Validates and executes role transition with comprehensive validation
-   */
-  validateRoleTransition(from: UserRole, to: UserRole, user: User, requestedBy: User): void {
-    this.logger.debug(
-      `Validating role transition from ${from.value} to ${to.value} for user ${user.id.value}`,
-    );
-
-    if (!this.canTransitionRole(from, to, user)) {
-      this.logger.warn(
-        `Role transition denied: ${from.value} -> ${to.value} for user ${user.id.value}`,
-      );
-      throw new UnauthorizedRoleTransitionError(
-        from.value,
-        to.value,
-        "Business rules validation failed",
-      );
-    }
-
-    // Additional authorization checks
-    if (to.isTutor() && !requestedBy.role.canManageUsers()) {
-      this.logger.warn(`Unauthorized tutor promotion attempt by user ${requestedBy.id.value}`);
-      throw new UnauthorizedRoleTransitionError(
-        from.value,
-        to.value,
-        "Only administrators can promote users to tutor role",
-      );
-    }
-
-    if (!requestedBy.isActive()) {
-      this.logger.warn(`Inactive user ${requestedBy.id.value} attempted role transition`);
-      throw new BusinessRuleViolationError(
-        "ActiveUserRequired",
-        "Inactive users cannot perform role transitions",
-      );
-    }
-
-    this.logger.log(
-      `Role transition approved: ${from.value} -> ${to.value} for user ${user.id.value}`,
-    );
+  private calculateAccountAge(user: User): number {
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - user.createdAt.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   }
 
   /**
    * Validates tutor promotion with detailed error reporting
    */
   validateTutorPromotionRequirements(user: User): void {
-    this.logger.debug(`Validating tutor promotion requirements for user ${user.id.value}`);
+    this.logger.debug(`Validating tutor promotion requirements for user ${user.id}`);
 
     if (!this.canBecomeTutor(user)) {
       const reasons: string[] = [];
@@ -188,40 +87,26 @@ export class UserDomainService {
         reasons.push("must be active user");
       }
 
-      if (user.role.isTutor() || user.role.isAdmin()) {
+      if (user.isTutor() || user.isAdmin()) {
         throw new BusinessRuleViolationError(
           "RoleEscalationPrevention",
-          "User already has elevated role",
+          "User already has elevated role"
         );
       }
 
       const accountAge = this.calculateAccountAge(user);
       if (accountAge < UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR) {
         reasons.push(
-          `minimum ${UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR} days registration (current: ${accountAge} days)`,
+          `minimum ${UserDomainService.MIN_REGISTRATION_DAYS_FOR_TUTOR} days registration (current: ${accountAge} days)`
         );
       }
 
-      const userAge = user.profile.age;
-      if (userAge && userAge < UserDomainService.MIN_AGE_FOR_TUTOR) {
-        reasons.push(`minimum age ${UserDomainService.MIN_AGE_FOR_TUTOR} (current: ${userAge})`);
-      }
-
-      const completeness = user.profile.calculateCompleteness();
-      if (completeness < 70) {
-        reasons.push(`profile completeness 70% (current: ${completeness}%)`);
-      }
-
-      if (!user.profile.bio || user.profile.bio.length < 50) {
+      if (!user.bio || user.bio.length < 50) {
         reasons.push("bio with at least 50 characters");
       }
 
-      if (user.profile.skills.length < 3) {
+      if (user.skills.length < 3) {
         reasons.push("at least 3 skills");
-      }
-
-      if (user.profile.education.length === 0 && user.profile.achievements.length === 0) {
-        reasons.push("education or achievements");
       }
 
       throw new UserRequirementsNotMetError("tutor promotion", reasons);
@@ -231,220 +116,193 @@ export class UserDomainService {
   }
 
   /**
-   * Determines if user can change email
+   * Validates role transitions
    */
-  canChangeEmail(user: User, newEmail: Email, lastEmailChange?: Date): boolean {
-    if (!user.isActive()) {
+  validateRoleTransition(
+    from: UserRoleType,
+    to: UserRoleType,
+    user: User,
+    requestedBy: User
+  ): void {
+    this.logger.debug(`Validating role transition from ${from} to ${to} for user ${user.id}`);
+
+    if (!this.canTransitionRole(from, to)) {
+      this.logger.warn(`Role transition denied: ${from} -> ${to} for user ${user.id}`);
+      throw new UnauthorizedRoleTransitionError(from, to, "Role transition not allowed");
+    }
+
+    // Additional authorization checks
+    if (to === UserRoleType.TUTOR && !requestedBy.isAdmin()) {
+      this.logger.warn(`Unauthorized tutor promotion attempt by user ${requestedBy.id}`);
+      throw new UnauthorizedRoleTransitionError(from, to, "Only admins can promote users to tutor");
+    }
+
+    // Validate requesting user is active
+    if (!requestedBy.isActive()) {
+      this.logger.warn(`Inactive user ${requestedBy.id} attempted role transition`);
+      throw new BusinessRuleViolationError(
+        "ActiveUserRequired",
+        "Inactive users cannot perform role transitions"
+      );
+    }
+
+    this.logger.log(`Role transition approved: ${from} -> ${to} for user ${user.id}`);
+  }
+
+  /**
+   * Checks if role transition is allowed
+   */
+  private canTransitionRole(from: UserRoleType, to: UserRoleType): boolean {
+    // user parameter reserved for future validation logic
+    if (from === to) {
       return false;
     }
 
-    if (user.email.equals(newEmail)) {
+    // Prevent demoting admins/superadmins
+    if (from === UserRoleType.ADMIN || from === UserRoleType.SUPERADMIN) {
       return false;
-    }
-
-    if (lastEmailChange) {
-      const daysSinceLastChange = this.calculateDaysSince(lastEmailChange);
-      if (daysSinceLastChange < UserDomainService.EMAIL_CHANGE_COOLDOWN_DAYS) {
-        return false;
-      }
     }
 
     return true;
   }
 
   /**
-   * Determines if user has premium access
+   * Validates email change
+   */
+  validateEmailChange(user: User, newEmail: string): boolean {
+    if (user.email === newEmail) {
+      return false;
+    }
+
+    // Add more validation as needed
+    return true;
+  }
+
+  /**
+   * Checks if user has premium access
    */
   hasPremiumAccess(user: User, reputationScore: number): boolean {
-    if (user.role.isAdmin()) {
+    if (user.isAdmin()) {
       return true;
     }
 
-    return reputationScore >= UserDomainService.MIN_REPUTATION_FOR_PREMIUM;
+    if (user.isTutor() && reputationScore >= UserDomainService.MIN_REPUTATION_FOR_PREMIUM) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
-   * Determines tutor tier based on performance
+   * Calculates reputation score
    */
-  getTutorTier(
-    completedSessions: number,
-    reputationScore: number,
-    cancellationRate: number,
-  ): "junior" | "senior" | "expert" {
-    if (cancellationRate > UserDomainService.MAX_CANCELLATION_RATE) {
-      return "junior";
-    }
-
-    if (
-      completedSessions >= UserDomainService.MIN_SESSIONS_FOR_SENIOR_TUTOR &&
-      reputationScore >= 80
-    ) {
-      return reputationScore >= 90 ? "expert" : "senior";
-    }
-
-    return "junior";
-  }
-
-  /**
-   * Calculates comprehensive user reputation score
-   */
-  calculateReputationScore(user: User, factors: ReputationFactors): number {
-    this.logger.debug(`Calculating reputation score for user ${user.id.value}`);
+  calculateReputationScore(user: User): number {
+    this.logger.debug(`Calculating reputation score for user ${user.id}`);
 
     let score = 0;
 
-    // Base score for being active
+    // Base score for active users
     if (user.isActive()) {
       score += 10;
     }
 
     // Role-based score
-    if (user.role.isTutor()) {
+    if (user.isTutor()) {
       score += 20;
-    } else if (user.role.isAdmin()) {
+    } else if (user.isAdmin()) {
       score += 30;
     }
 
-    // Review-based score (0-40 points)
-    if (factors.reviews.length > 0) {
-      const averageRating =
-        factors.reviews.reduce((sum, review) => sum + review.rating, 0) / factors.reviews.length;
-      const verifiedReviews = factors.reviews.filter((r) => r.verified).length;
-      const verificationBonus = (verifiedReviews / factors.reviews.length) * 5;
-      score += averageRating * 7 + verificationBonus;
-    }
-
-    // Completed sessions bonus (0-20 points)
-    score += Math.min(factors.completedSessions * 0.5, 20);
-
-    // Response time bonus (0-10 points)
-    if (factors.responseTime <= 1) score += 10;
-    else if (factors.responseTime <= 4) score += 7;
-    else if (factors.responseTime <= 12) score += 4;
-
-    // Cancellation rate penalty
-    score -= factors.cancellationRate * 0.5;
-
-    // Account age bonus
-    const accountAge = this.calculateAccountAge(user);
-    score += Math.min(accountAge * 0.1, 10);
-
-    const finalScore = Math.max(0, Math.min(100, score));
-    this.logger.debug(`Calculated reputation score: ${finalScore}`);
-
-    return finalScore;
+    // factors parameter reserved for future reputation calculation logic
+    return Math.min(score, 100);
   }
 
   /**
-   * Suggests optimal user role based on context
+   * Generates user metrics
    */
-  suggestOptimalUserRole(
-    emailDomain: string,
-    context?: {
-      isEducator?: boolean;
-      hasTeachingExperience?: boolean;
-    },
-  ): UserRole {
-    this.logger.debug(`Determining optimal role for domain: ${emailDomain}`);
-
-    const educationalDomains = [
-      "university.edu",
-      "college.edu",
-      "school.edu",
-      "teacher.org",
-      "educator.com",
-      "academic.org",
-    ];
-
-    if (educationalDomains.includes(emailDomain.toLowerCase())) {
-      this.logger.debug("Educational domain detected, suggesting tutor role");
-      return UserRole.tutor();
-    }
-
-    if (context?.isEducator || context?.hasTeachingExperience) {
-      this.logger.debug("Teaching context detected, suggesting tutor role");
-      return UserRole.tutor();
-    }
-
-    this.logger.debug("No special context detected, defaulting to student role");
-    return UserRole.student();
-  }
-
-  /**
-   * Generates comprehensive user metrics
-   */
-  generateUserMetrics(user: User, reputationFactors?: ReputationFactors): UserMetrics {
-    this.logger.debug(`Generating comprehensive metrics for user ${user.id.value}`);
+  generateUserMetrics(user: User, reputationFactors?: any): any {
+    this.logger.debug(`Generating comprehensive metrics for user ${user.id}`);
 
     const accountAge = this.calculateAccountAge(user);
     const isEligibleForTutor = this.canBecomeTutor(user);
-    const profileCompleteness = user.profile.calculateCompleteness();
+    const profileCompleteness = this.calculateProfileCompleteness(user);
 
     let reputationScore: number | undefined;
     let isEligibleForPremium = false;
 
     if (reputationFactors) {
-      reputationScore = this.calculateReputationScore(user, reputationFactors);
+      reputationScore = this.calculateReputationScore(user);
       isEligibleForPremium = this.hasPremiumAccess(user, reputationScore);
-    } else if (user.role.isAdmin()) {
+    } else if (user.isAdmin()) {
       isEligibleForPremium = true;
     }
 
     // Determine user tier
     let userTier = "basic";
-    if (user.role.isAdmin()) {
+    if (user.isAdmin()) {
       userTier = "admin";
-    } else if (user.role.isTutor() && reputationFactors) {
-      userTier = this.getTutorTier(
-        reputationFactors.completedSessions,
-        reputationScore!,
-        reputationFactors.cancellationRate,
-      );
-    } else if (isEligibleForPremium) {
-      userTier = "premium";
+    } else if (user.isTutor() && reputationFactors) {
+      userTier = this.getTutorTier(reputationFactors?.completedSessions || 0, reputationScore || 0);
     }
 
     return {
+      userId: user.id,
       accountAge,
       isEligibleForTutor,
-      isEligibleForPremium,
       profileCompleteness,
-      userTier,
       reputationScore,
+      isEligibleForPremium,
+      userTier,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 
   /**
-   * Creates an admin user - System-level operation
+   * Calculates profile completeness percentage
+   */
+  private calculateProfileCompleteness(user: User): number {
+    let completeness = 0;
+    if (user.firstName) completeness += 20;
+    if (user.lastName) completeness += 20;
+    if (user.email) completeness += 20;
+    if (user.bio) completeness += 20;
+    if (user.skills && user.skills.length > 0) completeness += 20;
+    return completeness;
+  }
+
+  /**
+   * Gets tutor tier based on sessions and reputation
+   */
+  private getTutorTier(completedSessions: number, reputationScore: number): string {
+    if (
+      completedSessions >= UserDomainService.MIN_SESSIONS_FOR_SENIOR_TUTOR &&
+      reputationScore >= 80
+    ) {
+      return "senior";
+    } else if (completedSessions >= 10 && reputationScore >= 60) {
+      return "intermediate";
+    } else {
+      return "beginner";
+    }
+  }
+
+  /**
+   * Creates an admin user (system operation)
    */
   createAdminUser(userData: { email: string; firstName: string; lastName: string }): User {
-    this.logger.warn("Creating admin user via system operation");
+    this.logger.warn("Creating admin user - this is a system operation");
 
     const adminUser = User.create({
       email: userData.email,
       firstName: userData.firstName,
       lastName: userData.lastName,
-      role: UserRole.admin(),
+      role: UserRoleType.ADMIN,
       status: UserStatus.ACTIVE, // Admins start active
     });
 
-    this.logger.warn(`Admin user created: ${adminUser.id.value} - ${adminUser.email.value}`);
+    this.logger.warn(`Admin user created: ${adminUser.id} - ${adminUser.email}`);
     return adminUser;
-  }
-
-  /**
-   * Calculates user account age in days
-   */
-  calculateAccountAge(user: User): number {
-    return this.calculateDaysSince(user.createdAt);
-  }
-
-  /**
-   * Helper method to calculate days since a date
-   */
-  private calculateDaysSince(date: Date): number {
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }
 }

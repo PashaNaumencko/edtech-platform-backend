@@ -1,15 +1,6 @@
-import {
-  IsArray,
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsOptional,
-  IsString,
-  MinLength,
-} from "class-validator";
+import { IsArray, IsEmail, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
 
-import { UserRoleType } from "../../domain/value-objects/user-role.value-object";
-import { AchievementDto, EducationDto, NotificationSettingsDto } from "./user.dto";
+import { UserRoleType } from "../../domain/entities/user.entity";
 
 /**
  * Create User Request DTO
@@ -34,59 +25,12 @@ export class CreateUserRequestDto {
 
   @IsOptional()
   @IsString()
-  password?: string;
-
-  @IsOptional()
-  preferences?: CreateUserPreferencesDto;
-
-  @IsOptional()
-  profile?: CreateUserProfileDto;
-}
-
-/**
- * Create User Preferences DTO
- */
-export class CreateUserPreferencesDto {
-  @IsOptional()
-  @IsString()
-  timezone?: string;
-
-  @IsOptional()
-  @IsString()
-  language?: string;
-
-  @IsOptional()
-  notifications?: Partial<NotificationSettingsDto>;
-}
-
-/**
- * Create User Profile DTO
- */
-export class CreateUserProfileDto {
-  @IsOptional()
-  @IsString()
   bio?: string;
-
-  @IsOptional()
-  @IsDateString()
-  dateOfBirth?: Date;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   skills?: string[];
-
-  @IsOptional()
-  @IsEnum(["beginner", "intermediate", "advanced", "expert"])
-  experienceLevel?: string;
-
-  @IsOptional()
-  @IsArray()
-  education?: EducationDto[];
-
-  @IsOptional()
-  @IsArray()
-  achievements?: AchievementDto[];
 }
 
 /**
@@ -97,7 +41,7 @@ export interface CreateUserResponseData {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRoleType;
+  role: string;
   status: string;
 }
 

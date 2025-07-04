@@ -1,9 +1,6 @@
 // Entities
 export * from "./entities/user.entity";
 
-// Value Objects
-export * from "./value-objects";
-
 // Domain Services
 export * from "./services/user-domain.service";
 

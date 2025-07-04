@@ -1,21 +1,14 @@
-import {
-  IsArray,
-  IsDateString,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MinLength,
-} from "class-validator";
+import { IsArray, IsDateString, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
 
 import { AchievementDto, EducationDto } from "./user.dto";
 
 /**
  * Update User Profile Request DTO
+ *
+ * Data transfer object for user profile update requests
  */
 export class UpdateUserProfileRequestDto {
   @IsString()
-  @IsNotEmpty()
   userId: string;
 
   @IsOptional()
@@ -30,7 +23,6 @@ export class UpdateUserProfileRequestDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(50)
   bio?: string;
 
   @IsOptional()

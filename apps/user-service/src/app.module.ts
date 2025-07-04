@@ -1,17 +1,20 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 
 // Domain and Application modules
-import { UserApplicationModule } from './application/user-application.module';
-import { UserDomainModule } from './domain/user-domain.module';
+import { UserApplicationModule } from "./application/user-application.module";
+import { UserDomainModule } from "./domain/user-domain.module";
+
+// Infrastructure modules
+import { InfrastructureModule } from "./infrastructure/infrastructure.module";
 
 // Service-specific Configuration
-import { createUserServiceConfigs } from './config/user-service.config-creators';
-import { UserServiceConfigurationService } from './config/user-service.configuration';
-import { UserServiceEnvironmentSchema } from './config/user-service.environment.schema';
+import { createUserServiceConfigs } from "./config/user-service.config-creators";
+import { UserServiceConfigurationService } from "./config/user-service.configuration";
+import { UserServiceEnvironmentSchema } from "./config/user-service.environment.schema";
 
 // Shared Configuration Utilities
-import { createZodValidation } from '@edtech/config';
+import { createZodValidation } from "@edtech/config";
 
 @Module({
   imports: [
@@ -25,11 +28,11 @@ import { createZodValidation } from '@edtech/config';
     // Domain Layer
     UserDomainModule,
 
+    // Infrastructure Layer
+    InfrastructureModule,
+
     // Application Layer
     UserApplicationModule,
-
-    // Infrastructure Layer (postgres connection will be added in Day 9)
-    // PostgresModule, // Commented out until Day 9 when we implement actual database integration
   ],
   providers: [
     // Typed configuration service

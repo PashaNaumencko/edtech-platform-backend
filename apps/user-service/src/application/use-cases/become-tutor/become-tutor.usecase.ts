@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { EventBus } from "@nestjs/cqrs";
 
 import { IUseCase } from "@edtech/types";
-import { UserId, UserRole } from "../../../domain/value-objects";
+import { USER_SERVICE_TOKENS } from "../../../constants";
+import { UserRoleType } from "../../../domain/entities/user.entity";
 import { BecomeTutorRequestDto, BecomeTutorResponseDto } from "../../dto/become-tutor.dto";
 import { IUserRepository } from "../../interfaces/repository.interface";
 
@@ -15,14 +16,14 @@ import { IUserRepository } from "../../interfaces/repository.interface";
 @Injectable()
 export class BecomeTutorUseCase implements IUseCase<BecomeTutorRequestDto, BecomeTutorResponseDto> {
   constructor(
+    @Inject(USER_SERVICE_TOKENS.USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
-    private readonly eventBus: EventBus,
+    private readonly eventBus: EventBus
   ) {}
 
   async execute(request: BecomeTutorRequestDto): Promise<BecomeTutorResponseDto> {
     // 1. Find the user
-    const userId = UserId.fromString(request.userId);
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findById(request.userId);
     if (!user) {
       throw new Error("User not found");
     }
@@ -32,15 +33,17 @@ export class BecomeTutorUseCase implements IUseCase<BecomeTutorRequestDto, Becom
       throw new Error("User is already a tutor");
     }
 
-    // 3. Update user role to tutor
-    const tutorRole = UserRole.tutor();
-    user.changeRole(tutorRole, request.userId);
+    // 3. Update user profile with tutor information
+    user.update(
+      {
+        bio: request.bio,
+        skills: request.skills,
+      },
+      request.userId
+    );
 
-    // 4. Update profile if provided
-    if (request.bio || request.skills) {
-      // Note: This would require implementing updateProfile method in User entity
-      // For now, we'll just change the role
-    }
+    // 4. Change role to tutor
+    user.changeRole(UserRoleType.TUTOR, request.userId);
 
     // 5. Save updated user
     await this.userRepository.save(user);
@@ -52,8 +55,8 @@ export class BecomeTutorUseCase implements IUseCase<BecomeTutorRequestDto, Becom
 
     // 7. Return updated user data
     return {
-      userId: user.id.value,
-      newRole: user.role.value,
+      userId: user.id,
+      newRole: user.role,
       requiresApproval: false, // Auto-approved for now
       eligibilityChecks: {
         ageRequirement: true,

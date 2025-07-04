@@ -1,11 +1,10 @@
-import { User } from '../../domain/entities/user.entity';
-import { UserId } from '../../domain/value-objects';
+import { User } from "../../domain/entities/user.entity";
 
 /**
  * User Repository Interface
- * 
+ *
  * Defines the contract for user data persistence in the application layer.
- * Simplified version without specifications for now.
+ * Simplified version for Day 13.
  */
 export interface IUserRepository {
   /**
@@ -16,7 +15,7 @@ export interface IUserRepository {
   /**
    * Finds a user by ID
    */
-  findById(id: UserId): Promise<User | null>;
+  findById(id: string): Promise<User | null>;
 
   /**
    * Finds a user by email
@@ -31,7 +30,7 @@ export interface IUserRepository {
   /**
    * Deletes a user by ID
    */
-  delete(id: UserId): Promise<void>;
+  delete(id: string): Promise<void>;
 
   /**
    * Checks if a user exists by email

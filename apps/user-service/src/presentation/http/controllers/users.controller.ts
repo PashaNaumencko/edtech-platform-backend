@@ -12,118 +12,117 @@ import {
 
 import {
   ErrorResponseDto,
-  ListResponseDto,
   PaginatedResponseDto,
-  PaginatedResponseParams,
-  QueryParamsDto,
   SingleEntityResponseDto,
   SuccessResponseDto,
 } from "@edtech/types";
 
+import {
+  BecomeTutorRequestDto,
+  BecomeTutorResponseDto,
+} from "../../../application/dto/become-tutor.dto";
+import {
+  CreateUserRequestDto,
+  CreateUserResponseDto,
+} from "../../../application/dto/create-user.dto";
+import {
+  UpdateUserProfileRequestDto,
+  UpdateUserProfileResponseDto,
+} from "../../../application/dto/update-user-profile.dto";
+import { BecomeTutorUseCase } from "../../../application/use-cases/become-tutor/become-tutor.usecase";
+import { CreateUserUseCase } from "../../../application/use-cases/create-user/create-user.usecase";
+import { UpdateUserProfileUseCase } from "../../../application/use-cases/update-user-profile/update-user-profile.usecase";
+
 /**
- * Users HTTP Controller
+ * Users Controller
  *
- * Handles HTTP requests for user operations using standardized response DTOs
- * This is a simplified version for demonstration purposes
+ * Provides HTTP endpoints for user management operations.
+ * Demonstrates usage of all base response DTOs.
  */
 @Controller("users")
 export class UsersController {
+  constructor(
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly updateUserProfileUseCase: UpdateUserProfileUseCase,
+    private readonly becomeTutorUseCase: BecomeTutorUseCase
+  ) {}
+
   /**
-   * Create a new user (simplified example)
+   * Create a new user
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  createUser(@Body() createUserDto: any): SuccessResponseDto<SingleEntityResponseDto<any>> {
-    // Mock response for demonstration
-    const mockUser = {
-      id: "user-123",
-      email: createUserDto.email,
-      firstName: createUserDto.firstName,
-      lastName: createUserDto.lastName,
-      role: createUserDto.role || "student",
-      status: "pending_verification",
-    };
-
-    const singleResponse = SingleEntityResponseDto.create(mockUser);
-    return SuccessResponseDto.create(singleResponse);
+  async createUser(
+    @Body() createUserDto: CreateUserRequestDto
+  ): Promise<SuccessResponseDto<SingleEntityResponseDto<CreateUserResponseDto>>> {
+    try {
+      const result = await this.createUserUseCase.execute(createUserDto);
+      const singleResponse = SingleEntityResponseDto.create(result);
+      return SuccessResponseDto.create(singleResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorResponse = ErrorResponseDto.create("Failed to create user", [errorMessage]);
+      throw new Error(errorResponse.message);
+    }
   }
 
   /**
-   * Update user profile (simplified example)
+   * Update user profile
    */
   @Put(":userId/profile")
   @HttpCode(HttpStatus.OK)
-  updateUserProfile(
-    @Param("userId") userId: string
-  ): SuccessResponseDto<SingleEntityResponseDto<any>> {
-    // Mock response for demonstration
-    const mockUpdatedUser = {
-      userId,
-      profileCompleteness: 85,
-      becameEligibleForTutoring: true,
-      updatedFields: ["bio", "skills"],
-    };
+  async updateUserProfile(
+    @Param("userId") userId: string,
+    @Body() updateProfileDto: UpdateUserProfileRequestDto
+  ): Promise<SuccessResponseDto<SingleEntityResponseDto<UpdateUserProfileResponseDto>>> {
+    try {
+      // Ensure userId from path matches the DTO
+      updateProfileDto.userId = userId;
 
-    const singleResponse = SingleEntityResponseDto.create(mockUpdatedUser);
-    return SuccessResponseDto.create(singleResponse);
+      const result = await this.updateUserProfileUseCase.execute(updateProfileDto);
+      const singleResponse = SingleEntityResponseDto.create(result);
+      return SuccessResponseDto.create(singleResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorResponse = ErrorResponseDto.create("Failed to update user profile", [
+        errorMessage,
+      ]);
+      throw new Error(errorResponse.message);
+    }
   }
 
   /**
-   * Promote user to tutor (simplified example)
+   * Promote user to tutor
    */
   @Post(":userId/become-tutor")
   @HttpCode(HttpStatus.OK)
-  becomeTutor(@Param("userId") userId: string): SuccessResponseDto<SingleEntityResponseDto<any>> {
-    // Mock response for demonstration
-    const mockTutorResponse = {
-      userId,
-      newRole: "tutor",
-      requiresApproval: false,
-      eligibilityChecks: {
-        ageRequirement: true,
-        registrationTime: true,
-        profileCompleteness: true,
-        overallEligible: true,
-      },
-    };
+  async becomeTutor(
+    @Param("userId") userId: string,
+    @Body() becomeTutorDto: BecomeTutorRequestDto
+  ): Promise<SuccessResponseDto<SingleEntityResponseDto<BecomeTutorResponseDto>>> {
+    try {
+      // Ensure userId from path matches the DTO
+      becomeTutorDto.userId = userId;
 
-    const singleResponse = SingleEntityResponseDto.create(mockTutorResponse);
-    return SuccessResponseDto.create(singleResponse);
+      const result = await this.becomeTutorUseCase.execute(becomeTutorDto);
+      const singleResponse = SingleEntityResponseDto.create(result);
+      return SuccessResponseDto.create(singleResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorResponse = ErrorResponseDto.create("Failed to promote user to tutor", [
+        errorMessage,
+      ]);
+      throw new Error(errorResponse.message);
+    }
   }
 
   /**
-   * Get users with pagination (example endpoint)
-   */
-  @Get()
-  @HttpCode(HttpStatus.OK)
-  getUsers(@Query() query: QueryParamsDto): SuccessResponseDto<PaginatedResponseDto<any>> {
-    // Example paginated response - in real implementation, this would use a repository
-    const mockUsers = [
-      { id: "1", email: "user1@example.com", firstName: "John", lastName: "Doe" },
-      { id: "2", email: "user2@example.com", firstName: "Jane", lastName: "Smith" },
-    ];
-
-    const paginationParams: PaginatedResponseParams<any> = {
-      items: mockUsers,
-      limit: query.limit || 10,
-      total: 100, // total count
-      hasNext: true,
-      nextCursor: "next-cursor-123",
-      previousCursor: "prev-cursor-456",
-    };
-
-    const paginatedResponse = PaginatedResponseDto.create(paginationParams);
-
-    return SuccessResponseDto.create(paginatedResponse);
-  }
-
-  /**
-   * Get user by ID (example endpoint)
+   * Get user by ID (mock implementation for now)
    */
   @Get(":userId")
   @HttpCode(HttpStatus.OK)
-  getUserById(@Param("userId") userId: string): SuccessResponseDto<SingleEntityResponseDto<any>> {
-    // Example single user response - in real implementation, this would use a repository
+  getUser(@Param("userId") userId: string): SuccessResponseDto<SingleEntityResponseDto<any>> {
+    // Mock response for demonstration
     const mockUser = {
       id: userId,
       email: "user@example.com",
@@ -138,61 +137,36 @@ export class UsersController {
   }
 
   /**
-   * Get all users (non-paginated example)
+   * Get all users with pagination (mock implementation for now)
    */
-  @Get("all/list")
+  @Get()
   @HttpCode(HttpStatus.OK)
-  getAllUsers(): SuccessResponseDto<ListResponseDto<any>> {
-    // Example list response - in real implementation, this would use a repository
+  getUsers(@Query("limit") limit: number = 10): SuccessResponseDto<PaginatedResponseDto<any>> {
+    // Mock response for demonstration
     const mockUsers = [
-      { id: "1", email: "user1@example.com", firstName: "John", lastName: "Doe" },
-      { id: "2", email: "user2@example.com", firstName: "Jane", lastName: "Smith" },
-      { id: "3", email: "user3@example.com", firstName: "Bob", lastName: "Johnson" },
+      {
+        id: "1",
+        email: "user1@example.com",
+        firstName: "John",
+        lastName: "Doe",
+        role: "student",
+      },
+      {
+        id: "2",
+        email: "user2@example.com",
+        firstName: "Jane",
+        lastName: "Smith",
+        role: "tutor",
+      },
     ];
 
-    const listResponse = ListResponseDto.create(mockUsers);
-    return SuccessResponseDto.create(listResponse);
-  }
-
-  /**
-   * Demonstrate pagination getters (example endpoint)
-   */
-  @Get("demo/pagination")
-  @HttpCode(HttpStatus.OK)
-  demonstratePaginationGetters(): SuccessResponseDto<PaginatedResponseDto<any>> {
-    const users = [
-      { id: "1", email: "user1@example.com" },
-      { id: "2", email: "user2@example.com" },
-    ];
-
-    const paginationParams: PaginatedResponseParams<any> = {
-      items: users,
-      limit: 10,
-      total: 100,
-      hasNext: true,
-      nextCursor: "next-cursor-123",
-      previousCursor: "prev-cursor-456",
-    };
-
-    const paginatedResponse = PaginatedResponseDto.create(paginationParams);
-
-    // Demonstrate using getters instead of duplicated fields
-    console.log("Total (from getter):", paginatedResponse.total); // Uses getter
-    console.log("Has Next (from getter):", paginatedResponse.hasNext); // Uses getter
-    console.log("Pagination Total (direct):", paginatedResponse.pagination.total); // Direct access
+    const paginatedResponse = PaginatedResponseDto.create({
+      items: mockUsers,
+      limit,
+      total: 2,
+      hasNext: false,
+    });
 
     return SuccessResponseDto.create(paginatedResponse);
-  }
-
-  /**
-   * Demonstrate error response (example endpoint)
-   */
-  @Get("demo/error")
-  @HttpCode(HttpStatus.BAD_REQUEST)
-  demonstrateErrorResponse(): ErrorResponseDto {
-    return ErrorResponseDto.create("Validation failed", [
-      "Email is required",
-      "Email must be valid",
-    ]);
   }
 }

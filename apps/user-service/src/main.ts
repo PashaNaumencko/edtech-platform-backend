@@ -39,7 +39,7 @@ async function bootstrap() {
           const details = validationErrors.flatMap((error) => {
             if (error.constraints) {
               return Object.values(error.constraints).map(
-                (msg) => new ErrorDetailDto(msg, error.property),
+                (msg) => new ErrorDetailDto(msg, error.property)
               );
             }
             return [];
@@ -47,11 +47,11 @@ async function bootstrap() {
           return new BadRequestException(
             ErrorResponseDto.create(
               "Validation failed",
-              details.map((d) => d.message),
-            ),
+              details.map((d) => d.message)
+            )
           );
         },
-      }),
+      })
     );
 
     // Health check endpoint with detailed configuration info
