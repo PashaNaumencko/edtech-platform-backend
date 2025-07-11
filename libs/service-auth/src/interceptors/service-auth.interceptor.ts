@@ -61,10 +61,7 @@ export class ServiceAuthInterceptor implements NestInterceptor {
 
       if (authMethod === "cognito") {
         // Use Cognito JWT tokens
-        const token = await this.serviceAuthService.generateServiceToken(
-          this.config.serviceName,
-          targetService
-        );
+        const token = await this.serviceAuthService.generateServiceToken(this.config.serviceName);
         headers = {
           Authorization: `Bearer ${token}`,
           "X-Service-Name": this.config.serviceName,
@@ -86,8 +83,7 @@ export class ServiceAuthInterceptor implements NestInterceptor {
           credentials,
           request?.method || "GET",
           request?.url || "/",
-          request?.headers || {},
-          request?.body
+          request?.headers || {}
         );
 
         headers["X-Service-Name"] = this.config.serviceName;
@@ -127,11 +123,11 @@ export class ServiceAuthInterceptor implements NestInterceptor {
     headers: Record<string, string>;
     data?: any;
   }> {
-    return await this.serviceAuthService.createAuthenticatedRequest(
-      method,
-      url,
-      targetService,
-      data
-    );
+    const request = await this.serviceAuthService.createAuthenticatedRequest(method, url);
+
+    return {
+      ...request,
+      data,
+    };
   }
 }

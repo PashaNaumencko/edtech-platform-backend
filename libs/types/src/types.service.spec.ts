@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SharedTypesService } from './shared-types.service';
+import { SharedTypesService } from './types.service';
 
 describe('SharedTypesService', () => {
   let service: SharedTypesService;

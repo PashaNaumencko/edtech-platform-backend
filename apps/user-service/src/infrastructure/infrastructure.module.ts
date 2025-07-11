@@ -1,11 +1,9 @@
+// import { AuthModule } from "@edtech/auth";
+// import { RedisModule } from "@edtech/redis";
+// import { S3Module } from "@edtech/s3";
 import { Module } from "@nestjs/common";
-import { TypeOrmModule } from "@nestjs/typeorm";
-
-import { USER_SERVICE_TOKENS } from "../constants";
-import { EventBridgeModule } from "./event-bridge/event-bridge.module";
-import { UserOrmEntity } from "./postgres/entities/user.orm-entity";
+import { ConfigModule } from "@nestjs/config";
 import { PostgresModule } from "./postgres/postgres.module";
-import { UserRepositoryImpl } from "./postgres/repositories/user.repository.impl";
 
 /**
  * Infrastructure Module
@@ -15,15 +13,10 @@ import { UserRepositoryImpl } from "./postgres/repositories/user.repository.impl
  * - Repository implementations
  * - External service integrations
  * - Event publishing infrastructure
+ * - Shared authentication, Redis, and S3 services
  */
 @Module({
-  imports: [PostgresModule, TypeOrmModule.forFeature([UserOrmEntity]), EventBridgeModule],
-  providers: [
-    {
-      provide: USER_SERVICE_TOKENS.USER_REPOSITORY,
-      useClass: UserRepositoryImpl,
-    },
-  ],
-  exports: [USER_SERVICE_TOKENS.USER_REPOSITORY, EventBridgeModule],
+  imports: [ConfigModule, PostgresModule],
+  exports: [PostgresModule],
 })
 export class InfrastructureModule {}
