@@ -3,208 +3,59 @@
 ## Overview
 Comprehensive migration and seeding approach for all database types in the EdTech platform's microservices architecture. Each service owns its data completely through dedicated databases.
 
-## Database Architecture Summary
+## Architectural Decision: Cloud-Based Development
 
-### Service-Database Mapping
-- **User Service**: PostgreSQL (User identity, authentication, roles)
-- **Payment Service**: PostgreSQL (Financial transactions, ACID compliance)
-- **Reviews Service**: PostgreSQL (Review analytics, aggregations, reporting)
-- **Courses Service**: DynamoDB (Course content, flexible document structure)
-- **Chat Service**: DynamoDB (High-volume messaging, real-time patterns)
-- **Tutor Matching Service**: DynamoDB + Neo4j (Profiles + graph relationships)
-- **Video Call Service**: DynamoDB (Call metadata, lightweight tracking)
-- **AI Service (Future)**: OpenSearch + DynamoDB (Vector search + conversations)
+As per the **[Cloud-Based Development Environment Strategy](./cloud-development-environment-strategy.md)**, we will no longer use LocalStack. All development, migration, and seeding will be performed against real AWS services deployed in a dedicated **development AWS account**. This ensures high fidelity and simplifies the developer workflow.
+
+## Database Architecture Summary
+(Service-Database Mapping remains the same)
 
 ## PostgreSQL Services Migration Framework
 
-### TypeORM Configuration Template
+### TypeORM Configuration (Updated)
+The configuration will now always point to a real RDS instance. The connection details will be managed by the CDK and passed to the services (e.g., via AWS Secrets Manager).
+
 ```typescript
 // shared/database/postgres-base.config.ts
-import { DataSource, DataSourceOptions } from 'typeorm';
-
-export abstract class PostgreSQLBaseConfig {
-  protected createDataSource(serviceName: string, entities: string[]): DataSource {
-    const config: DataSourceOptions = {
-      type: 'postgres',
-      host: process.env[`POSTGRES_${serviceName.toUpperCase()}_HOST`] || 'localhost',
-      port: parseInt(process.env[`POSTGRES_${serviceName.toUpperCase()}_PORT`] || '5432'),
-      username: process.env[`POSTGRES_${serviceName.toUpperCase()}_USER`] || serviceName,
-      password: process.env[`POSTGRES_${serviceName.toUpperCase()}_PASSWORD`] || 'password',
-      database: process.env[`POSTGRES_${serviceName.toUpperCase()}_DB`] || serviceName,
-      entities: entities,
-      migrations: [`src/migrations/*.ts`],
-      synchronize: false,
-      logging: process.env.NODE_ENV === 'development',
-      migrationsTableName: 'migrations_history',
-    };
-    return new DataSource(config);
-  }
-}
+// This configuration now assumes it's running in an ECS task
+// with access to environment variables or secrets set by the CDK.
+const config: DataSourceOptions = {
+  type: 'postgres',
+  host: process.env.DB_HOST, // Injected by CDK
+  port: parseInt(process.env.DB_PORT || '5432'),
+  username: process.env.DB_USER,
+  password: process.env.DB_PASSWORD, // From Secrets Manager
+  database: process.env.DB_NAME,
+  // ...
+};
 ```
 
-### Migration Commands Structure
-- `npm run migration:generate` - Auto-generate migrations from entity changes
-- `npm run migration:run` - Apply pending migrations
-- `npm run migration:revert` - Rollback last migration
-- `npm run seed:run` - Execute seed scripts
+### Migration & Seeding Commands
+The commands remain the same, but they will be executed against the developer's ephemeral cloud database, not a local instance.
 
 ## DynamoDB Services Migration Framework
 
-### CDK-Based Schema Management
+### CDK-Based Schema Management (Updated)
+The CDK script will now deploy real DynamoDB tables. For development environments, these tables will be configured with `RemovalPolicy.DESTROY` to ensure they are deleted when the developer runs `cdk destroy`.
+
 ```typescript
 // cdk/lib/constructs/dynamodb-service-tables.construct.ts
-export class DynamoDbServiceTablesConstruct extends Construct {
-  public readonly tables: Map<string, Table> = new Map();
+const isDevEnvironment = props.environment.startsWith('dev');
 
-  constructor(scope: Construct, id: string, props: DynamoDbServiceTablesProps) {
-    super(scope, id);
-
-    props.tables.forEach(tableDefinition => {
-      const table = new Table(this, tableDefinition.tableName, {
-        tableName: `${props.serviceName}-${tableDefinition.tableName}-${props.environment}`,
-        partitionKey: tableDefinition.partitionKey,
-        sortKey: tableDefinition.sortKey,
-        billingMode: BillingMode.PAY_PER_REQUEST,
-        pointInTimeRecovery: props.environment === 'production',
-        removalPolicy: props.environment === 'development' 
-          ? RemovalPolicy.DESTROY 
-          : RemovalPolicy.RETAIN,
-      });
-
-      this.tables.set(tableDefinition.tableName, table);
-    });
-  }
-}
+const table = new Table(this, tableDefinition.tableName, {
+    // ...
+    billingMode: BillingMode.PAY_PER_REQUEST, // Ideal for dev and prod
+    // Destroy dev tables, retain prod tables
+    removalPolicy: isDevEnvironment ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+});
 ```
 
-### Migration Commands Structure
-- `npm run cdk:deploy` - Deploy table schema changes
-- `npm run seed:dynamodb` - Execute DynamoDB seed scripts
-- `npm run migrate:dynamodb` - Run data transformation migrations
-
-## Neo4j Migration Framework
-
-### Cypher Migration System
-```typescript
-// apps/tutor-matching-service/src/database/neo4j-migrator.ts
-export class Neo4jMigrator {
-  async runMigrations(): Promise<void> {
-    const availableMigrations = this.getAvailableMigrations();
-    const executedMigrations = await this.getExecutedMigrations();
-    const pendingMigrations = availableMigrations.filter(
-      migration => !executedMigrations.includes(migration.version)
-    );
-    
-    for (const migration of pendingMigrations) {
-      await this.executeMigration(migration);
-      await this.recordMigration(migration);
-    }
-  }
-}
-```
-
-### Migration Commands Structure
-- `npm run neo4j:migrate` - Apply Cypher migrations
-- `npm run neo4j:seed` - Load seed data
-- `npm run neo4j:reset` - Clean and recreate database
-
-## Migration Orchestration
-
-### Development Environment Setup
-```bash
-#!/bin/bash
-# scripts/migrate-all-services.sh
-
-echo "🚀 Running migrations for all services..."
-
-# PostgreSQL Services
-POSTGRES_SERVICES=("user-service" "payment-service" "reviews-service")
-for service in "${POSTGRES_SERVICES[@]}"; do
-  echo "🔄 Migrating PostgreSQL for $service..."
-  cd "apps/$service"
-  npm run typeorm:migration:run
-  npm run seed:run
-  cd "../.."
-done
-
-# DynamoDB Services
-echo "🔄 Creating DynamoDB tables..."
-npm run cdk:deploy --profile localstack
-
-# Neo4j Migration
-echo "🔄 Migrating Neo4j..."
-cd "apps/tutor-matching-service"
-npm run neo4j:migrate
-npm run neo4j:seed
-cd "../.."
-
-echo "✅ All migrations completed successfully!"
-```
+### Migration & Seeding Commands
+-   `cdk deploy <stack-name>` will create/update the real DynamoDB tables.
+-   Seed scripts will now target the deployed tables in the developer's AWS environment.
 
 ## Production Migration Strategy
-
-### Rolling Deployment Approach
-1. **Schema Changes**: Apply backward-compatible schema changes first
-2. **Code Deployment**: Deploy new service versions
-3. **Data Migration**: Run data transformation scripts
-4. **Cleanup**: Remove deprecated columns/indexes after verification
-
-### Rollback Capabilities
-- **PostgreSQL**: TypeORM automatic rollback via migration:revert
-- **DynamoDB**: CDK stack rollback with data preservation
-- **Neo4j**: Snapshot restoration and manual Cypher rollback scripts
-
-## Data Validation & Integrity
-
-### Cross-Service Data Consistency
-```typescript
-// shared/validation/data-integrity-checker.ts
-export class DataIntegrityChecker {
-  async validateUserPaymentConsistency(): Promise<ValidationResult> {
-    const userServiceUsers = await this.getUserServiceUserIds();
-    const paymentServiceUsers = await this.getPaymentServiceUserIds();
-    const orphanUsers = paymentServiceUsers.filter(id => !userServiceUsers.includes(id));
-    
-    return {
-      service: 'user-payment-consistency',
-      valid: orphanUsers.length === 0,
-      errors: orphanUsers.map(id => `User ${id} exists in payment service but not in user service`),
-    };
-  }
-}
-```
+This strategy remains unchanged and is even more robust now, as the staging environment will be a near-perfect replica of production, built from the same CDK code.
 
 ## CI/CD Integration
-
-### GitHub Actions Pipeline
-```yaml
-# .github/workflows/database-migrations.yml
-name: Database Migrations
-
-on:
-  push:
-    branches: [main, develop]
-    paths: ['**/migrations/**', '**/seeds/**']
-
-jobs:
-  test-migrations:
-    runs-on: ubuntu-latest
-    services:
-      postgres-user:
-        image: postgres:15
-        env:
-          POSTGRES_DB: user_service_test
-      # Additional services...
-
-    steps:
-      - name: Test PostgreSQL Migrations
-        run: npm run test:migrations:postgresql
-      - name: Test DynamoDB Schema
-        run: npm run test:migrations:dynamodb
-      - name: Test Neo4j Migrations
-        run: npm run test:migrations:neo4j
-```
-
----
-
-This comprehensive migration strategy ensures proper database management across all microservices while maintaining data integrity, rollback capabilities, and production safety. 
+The CI/CD pipeline will be updated to deploy to the `staging` and `prod` environments in their respective AWS accounts, using the same CDK constructs that developers use for their `dev` environments.
