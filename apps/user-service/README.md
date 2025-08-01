@@ -1,13 +1,20 @@
 # User Service - Internal Microservice
 
 ## Overview
-The User Service is an **internal HTTP API** that manages user accounts, profiles, and authentication for the EdTech platform.
+The User Service is the core microservice responsible for user management, authentication, and profiles in the EdTech platform.
 
 ## Purpose
-- **NOT** a public API - only for internal service-to-service communication
-- Handles user management, profiles, and authentication logic
-- Provides HTTP endpoints for other microservices to consume
-- Frontend access goes through AppSync GraphQL API
+- **Internal API** for service-to-service communication
+- User registration, authentication, and profile management
+- Role-based access control (Student, Tutor, Admin)
+- Domain events for cross-service integration
+- Frontend access through GraphQL Federation
+
+## 📚 Complete Documentation
+For comprehensive documentation including domain architecture, business rules, and implementation details, see:
+**[User Service Documentation](../../docs/services/user-service.md)**
+
+This README focuses on service-specific configuration and development setup.
 
 ## API Endpoints
 

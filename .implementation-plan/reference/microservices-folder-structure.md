@@ -5,21 +5,29 @@ This document defines the standardized folder structure for all microservices in
 
 ## Core Architectural Decisions
 
-### 1. **No CQRS Pattern** - Simplified Approach
-- ❌ No Command/Query handlers
-- ✅ Use Case pattern with `.usecase.ts` suffix
-- ✅ Simple application services when needed
+### 1. **Simplified DDD with Use Case Services**
+- ✅ Use Case services instead of separate command/query handlers
+- ✅ NestJS CQRS for aggregate roots and domain events
+- ✅ Drizzle ORM for excellent PostgreSQL TypeScript integration
+- ✅ mergeObject context for infrastructure to domain mapping
 
-### 2. **DDD + Clean Architecture**
-- **Domain Layer** (innermost) - Business logic, entities, value objects
-- **Application Layer** - Use cases, event handlers, sagas
-- **Infrastructure Layer** - External concerns (DB, APIs, messaging)
-- **Interface Layer** - Controllers, GraphQL resolvers
+### 2. **Simplified Domain Layer**
+- **Entities**: Core domain objects with identity
+- **Value Objects**: Immutable objects defined by their values
+- **Aggregate Roots**: Entities extending NestJS CQRS AggregateRoot
+- **Domain Services**: Complex business logic that doesn't belong to entities
+- **Domain Events**: Events extending NestJS CQRS Event
 
-### 3. **NestJS CQRS Integration**
-- ✅ Use `AggregateRoot` from `@nestjs/cqrs` for domain entities
-- ✅ Use local events and event handlers for side effects
-- ✅ Use Sagas for complex multi-step workflows
+### 3. **Clean Architecture Layers**
+- **Domain Layer** (innermost) - Pure business logic
+- **Application Layer** - Use case services, event handlers
+- **Infrastructure Layer** - Database, external services (Drizzle ORM)
+- **Presentation Layer** - Controllers, GraphQL resolvers
+
+### 4. **Real AWS Services**
+- ❌ No LocalStack - use real AWS services for development
+- ✅ Developer-specific AWS environments (dev-[name])
+- ✅ Cost-effective environment lifecycle management
 
 ## Complete Microservice Folder Structure
 
@@ -27,70 +35,50 @@ This document defines the standardized folder structure for all microservices in
 {service-name}/
 ├── src/
 │   ├── domain/                           # 🔵 DOMAIN LAYER (Business Logic)
-│   │   ├── entities/                     # Domain entities (AggregateRoot)
-│   │   │   ├── {entity}.entity.ts        # Main aggregate root
-│   │   │   ├── {child-entity}.entity.ts  # Child entities
+│   │   ├── entities/                     # Domain entities with identity
+│   │   │   ├── {entity}.entity.ts        # Simple domain entities
 │   │   │   └── index.ts                  # Barrel exports
-│   │   ├── value-objects/                # Value objects
-│   │   │   ├── {vo-name}.vo.ts
+│   │   ├── value-objects/                # Immutable value objects
+│   │   │   ├── {vo-name}.vo.ts           # Value objects with validation
 │   │   │   └── index.ts
-│   │   ├── events/                       # Domain events
+│   │   ├── aggregates/                   # Aggregate roots extending NestJS CQRS
+│   │   │   ├── {entity}.aggregate.ts     # Main aggregate root
+│   │   │   └── index.ts
+│   │   ├── events/                       # Domain events extending NestJS CQRS Event
 │   │   │   ├── {event-name}.event.ts
 │   │   │   └── index.ts
-│   │   ├── repositories/                 # Repository interfaces
-│   │   │   ├── {entity}.repository.ts
+│   │   ├── services/                     # Domain services for complex business logic
+│   │   │   ├── {domain-service}.service.ts
 │   │   │   └── index.ts
-│   │   ├── services/                     # Domain services (complex business logic)
-│   │   │   ├── {domain-service}.domain-service.ts
-│   │   │   └── index.ts
-│   │   ├── specifications/               # Business rule specifications
-│   │   │   ├── {spec-name}.specification.ts
-│   │   │   └── index.ts
-│   │   └── exceptions/                   # Domain exceptions
-│   │       ├── {exception-name}.exception.ts
-│   │       └── index.ts
 │   │
    │   ├── application/                      # 🟡 APPLICATION LAYER (Use Cases & Orchestration)
-   │   │   ├── use-cases/                    # 🎯 USE CASES (Main business flows)
-   │   │   │   ├── {operation}/              # Grouped by operation
-   │   │   │   │   ├── {operation}.usecase.ts
-   │   │   │   │   ├── {operation}.request.ts    # Use case input
-   │   │   │   │   ├── {operation}.response.ts   # Use case output
-   │   │   │   │   └── {operation}.usecase.spec.ts
+   │   │   ├── use-cases/                    # 🎯 USE CASE SERVICES (Business operations as services)
+   │   │   │   ├── {operation}.use-case.ts   # Use case service
    │   │   │   └── index.ts
-   │   │   ├── event-handlers/               # Local event handlers (side effects)
+   │   │   ├── dtos/                         # Data Transfer Objects (API layer)
+   │   │   │   ├── {entity}.dto.ts           # For API responses/transfers
+   │   │   │   ├── create-{entity}.dto.ts    # Input DTOs
+   │   │   │   └── index.ts
+   │   │   ├── event-handlers/               # Domain event handlers
    │   │   │   ├── {event-name}.handler.ts
    │   │   │   └── index.ts
-   │   │   ├── sagas/                        # Complex multi-step workflows
-   │   │   │   ├── {workflow-name}.saga.ts
-   │   │   │   └── index.ts
-   │   │   ├── services/                     # Application services (when needed)
-   │   │   │   ├── {service-name}.service.ts
-   │   │   │   └── index.ts
-   │   │   ├── dto/                          # Data Transfer Objects (API layer)
-   │   │   │   ├── {entity}.dto.ts           # For API responses/transfers
-   │   │   │   ├── {nested-object}.dto.ts    # For nested objects
-   │   │   │   └── index.ts
-   │   │   └── ports/                        # Interfaces for external services
-   │   │       ├── {service-name}.port.ts
+   │   │   └── interfaces/                   # Repository and service interfaces
+   │   │       ├── {entity}.repository.interface.ts
    │   │       └── index.ts
 │   │
 │   ├── infrastructure/                   # 🔴 INFRASTRUCTURE LAYER (External Concerns)
-│   │   ├── database/                     # Database implementation
-│   │   │   ├── entities/                 # TypeORM/Prisma entities
-│   │   │   │   ├── {entity}.orm-entity.ts
+│   │   ├── persistence/                  # Database layer using Drizzle ORM
+│   │   │   ├── schemas/                  # Drizzle database schemas
+│   │   │   │   ├── {entity}.schema.ts    # Drizzle table schemas
 │   │   │   │   └── index.ts
-│   │   │   ├── repositories/             # Repository implementations
-│   │   │   │   ├── {entity}.repository.impl.ts
+│   │   │   ├── repositories/             # Repository implementations with mergeObject mapping
+│   │   │   │   ├── {entity}.repository.ts
 │   │   │   │   └── index.ts
-│   │   │   ├── migrations/               # Database migrations
-│   │   │   │   ├── {timestamp}-{description}.ts
-│   │   │   │   └── index.ts
-│   │   │   ├── seeds/                    # Database seeds
-│   │   │   │   ├── {entity}.seed.ts
-│   │   │   │   └── index.ts
-│   │   │   └── mappers/                  # Domain ↔ ORM mappers
-│   │   │       ├── {entity}.mapper.ts
+│   │   │   ├── migrations/               # Drizzle migrations
+│   │   │   │   ├── {timestamp}_{description}.sql
+│   │   │   │   └── meta/
+│   │   │   └── seeds/                    # Database seeds
+│   │   │       ├── {entity}.seed.ts
 │   │   │       └── index.ts
 │   │   ├── postgres/                     # 🐘 PostgreSQL specific
 │   │   │   ├── connection/

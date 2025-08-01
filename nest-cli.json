@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/user-service/src",
+  "sourceRoot": "apps",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/user-service/tsconfig.app.json"
+    "tsConfigPath": "tsconfig.build.json"
   },
   "monorepo": true,
-  "root": "apps/user-service",
+  "root": ".",
   "projects": {
     "ai-service": {
       "type": "application",
@@ -44,15 +44,6 @@
       "sourceRoot": "apps/content-service/src",
       "compilerOptions": {
         "tsConfigPath": "apps/content-service/tsconfig.app.json"
-      }
-    },
-    "edtech-platform-backend": {
-      "type": "application",
-      "root": "apps/user-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/user-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/user-service/tsconfig.app.json"
       }
     },
     "learning-service": {

@@ -174,59 +174,52 @@ For chat messages, AppSync handles subscriptions directly from DynamoDB Streams 
 
 For general platform updates (e.g., tutor availability, lesson status changes), backend microservices publish relevant events to EventBridge. A dedicated EventBridge Subscriber Lambda then processes these events and calls AppSync's publish API to fan out updates to relevant GraphQL subscribers.
 
-5. Microservice Folder Structure (NestJS Monorepo - apps/<service-name>/src/)
-Each NestJS application within the apps/ directory of the monorepo adheres to this consistent Clean Architecture and DDD-aligned structure:
+5. Simplified Microservice Folder Structure (NestJS Monorepo - apps/<service-name>/src/)
+Each NestJS application follows a simplified DDD structure using NestJS CQRS as the foundation:
 
 apps/<microservice-name>/src/
-├── application/                # Defines Use Cases (Commands/Queries), DTOs, and Domain Events.
-│   │                           # This layer orchestrates the domain models to fulfill application features.
-│   ├── commands/               # **Combined Command Class and its Handler in one file**
-│   │   └── create-entity.command.ts  # Contains `CreateEntityCommand` and `CreateEntityHandler`
-│   │   └── update-entity.command.ts
-│   ├── queries/                # **Combined Query Class and its Handler in one file**
-│   │   └── get-entity-by-id.query.ts # Contains `GetEntityByIdQuery` and `GetEntityByIdHandler`
-│   │   └── get-entity-by-email.query.ts
-│   ├── dtos/                   # Data Transfer Objects (for API input validation & output projection)
+├── domain/                     # Core Business Logic - independent of frameworks/databases
+│   ├── entities/               # Domain entities with identity
+│   │   └── entity.ts
+│   ├── value-objects/          # Immutable value objects
+│   │   └── attribute.vo.ts
+│   ├── aggregates/             # Aggregate roots extending NestJS CQRS AggregateRoot
+│   │   └── entity.aggregate.ts
+│   ├── services/               # Domain services for complex business logic
+│   │   └── entity-domain.service.ts
+│   └── events/                 # Domain events extending NestJS CQRS Event
+│       └── entity-created.event.ts
+│
+├── application/                # Application Logic - orchestrates domain models
+│   ├── use-cases/              # Use case services (replaces command/query handlers)
+│   │   └── create-entity.use-case.ts
+│   │   └── get-entity.use-case.ts
+│   ├── dtos/                   # Data Transfer Objects
 │   │   ├── create-entity.dto.ts
 │   │   └── entity.dto.ts
-│   └── events/                 # **Domain Event definitions (Moved from domain layer)**
-│       └── entity-created.event.ts
-│       └── entity-profile-updated.event.ts
+│   ├── event-handlers/         # Domain event handlers
+│   │   └── entity-created.handler.ts
+│   └── interfaces/             # Repository and service interfaces
+│       └── entity.repository.interface.ts
 │
-├── domain/                     # Core Business Logic - independent of frameworks/databases.
-│   │                           # This layer contains the fundamental rules and data of your business.
-│   ├── aggregates/             # DDD Aggregate Roots (consistent boundaries for changes)
-│   │   └── entity.aggregate.ts
-│   └── value-objects/          # DDD Value Objects (immutable, defined by their attributes)
-│       └── attribute.vo.ts
-│
-├── infrastructure/             # Implements domain interfaces, handles external concerns.
-│   │                           # This layer adapts the domain and application to external systems.
-│   ├── auth/                   # Authentication/Authorization specific infrastructure implementations
-│   │   ├── cognito.service.ts
-│   │   └── bcrypt.service.ts
-│   ├── controllers/            # Internal REST API Controllers (for AppSync Lambda Resolvers to call)
-│   │   └── entity.controller.ts
-│   ├── graphql/                # GraphQL specific layer (present if service exposes its own subgraph)
-│   │   ├── models/             # GraphQL Object/Input Types (derived from application DTOs)
-│   │   │   └── entity.graphql-model.ts
-│   │   └── resolvers/          # GraphQL Resolvers (map GraphQL schema operations to application's commands/queries)
-│   │       └── entity.resolver.ts
-│   ├── persistence/            # Database-specific implementations for data storage
-│   │   ├── data-models/        # **Database Models (e.g., `entity.db-model.ts` for TypeORM/DynamoDB)**
-│   │   │   └── entity.db-model.ts # Renamed from `*.entity.ts` to avoid overlap with domain entities
-│   │   └── repositories/       # Concrete implementations of repository interfaces
+├── infrastructure/             # External concerns and implementations
+│   ├── persistence/            # Database layer using Drizzle ORM
+│   │   ├── schemas/            # Drizzle database schemas
+│   │   │   └── entity.schema.ts
+│   │   └── repositories/       # Repository implementations with mergeObject mapping
 │   │       └── entity.repository.ts
-│   ├── repositories/           # **Repository Interfaces (Moved here from domain layer)**
-│   │   └── interfaces/
-│   │       └── entity.repository.interface.ts
-│   ├── event-handlers/         # Event handlers for reacting to incoming EventBridge events
-│   │   └── external-event.handler.ts
-│   └── outbox/                 # Outbox Pattern implementation
-│       ├── outbox-event.db-model.ts
-│       ├── outbox.repository.interface.ts
-│       ├── outbox.repository.ts
-│       └── outbox.publisher.ts
+│   ├── graphql/                # GraphQL federation layer
+│   │   ├── models/             # GraphQL types derived from DTOs
+│   │   │   └── entity.graphql-model.ts
+│   │   └── resolvers/          # GraphQL resolvers using use case services
+│   │       └── entity.resolver.ts
+│   ├── http/                   # REST API controllers
+│   │   └── entity.controller.ts
+│   └── events/                 # EventBridge integration
+│       ├── publishers/         # Event publishers
+│       │   └── eventbridge.publisher.ts
+│       └── handlers/           # External event handlers
+│           └── external-event.handler.ts
 └── main.ts                     # Application entry point, NestJS bootstrapping
 
 6. Compliance & Security Requirements
@@ -286,86 +279,60 @@ AILearningAssistantStack: (Future Enhancement) Defines Lambda functions (one for
 
 ApiGatewayStack: Defines AWS AppSync GraphQL API, all necessary Data Sources (pointing to internal service ALBs, Lambdas, or directly to DynamoDB tables), and Resolvers (VTL or JavaScript).
 
-8. Integrated Development Workflow: Cloud & Local
-This strategy combines the speed of local development with the power of cloud deployments, using Docker Compose and LocalStack.
+8. Cloud-First Development Workflow
+This strategy uses real AWS services for all environments, ensuring high fidelity between development and production.
 
-8.1. Local Infrastructure Setup (docker-compose.yml)
-The docker-compose.yml file at your monorepo root orchestrates your local development environment:
+8.1. Development Environment Strategy
+All development work is performed against real AWS services deployed in dedicated developer environments:
 
-localstack service: Runs a Docker container that emulates AWS services (DynamoDB, Lambda, S3, EventBridge, Cognito, OpenSearch, Neptune, AppSync, etc.) via localhost:4566.
+Developer-Specific AWS Environments: Each developer has their own AWS environment (dev-[developer-name]) to prevent conflicts and enable independent development.
 
-postgres services: Run multiple local PostgreSQL containers for User Service, Payment Service, and Reviews Service to maintain proper microservice boundaries during development.
+Real AWS Services: Use actual RDS, DynamoDB, EventBridge, Cognito, S3, and AppSync services for development, ensuring 100% compatibility with production.
 
-Microservice containers: Each NestJS microservice (user_service, tutor_matching_service, chat_service, etc.) runs in its own Docker container, built from its Dockerfile.
+CDK-Based Infrastructure: All infrastructure is defined in CDK and can be deployed/destroyed easily for cost management.
 
-Environment Variables: Microservices are configured via environment variables to point to http://localstack:4566 for AWS service interactions and postgres:5432 for the database.
-
-Simplified docker-compose.yml Example:
-
-YAML
-
-# File: edtech-platform/docker-compose.yml
-version: '3.8'
-services:
-  localstack:
-    container_name: localstack-main
-    image: localstack/localstack:latest
-    ports: ["127.0.0.1:4566:4566", "127.0.0.1:4510-4559:4510-4559"]
-    environment: {SERVICES: "s3,lambda,dynamodb,sqs,sns,events,cognito-idp,es,neptune,appsync", AWS_DEFAULT_REGION: "us-east-1"}
-    volumes: ["./.localstack:/var/lib/localstack", "/var/run/docker.sock:/var/run/docker.sock"]
-  postgres:
-    image: postgres:15-alpine
-    container_name: edtech-postgres-db
-    ports: ["5432:5432"]
-    environment: {POSTGRES_DB: edtech_users_db, POSTGRES_USER: admin, POSTGRES_PASSWORD: password}
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
-  user_service: # Example microservice (User Service)
-    build: {context: ./apps/user-service, dockerfile: Dockerfile}
-    container_name: edtech-user-service
-    ports: ["3001:3000"]
-    environment: {DB_HOST: postgres, DB_PORT: 5432, DB_USERNAME: admin, DB_PASSWORD: password, DB_DATABASE: edtech_users_db, AWS_ENDPOINT_URL: http://localstack:4566, AWS_REGION: us-east-1}
-    depends_on: [localstack, postgres]
-    volumes: ["./apps/user-service:/app", "/app/node_modules", "/app/dist"]
-  # ... other microservices (tutor_matching_service, chat_service, etc.) would be defined here
-volumes: {postgres_data: {}, localstack_data: {}}
-8.2. Local Development Workflow (Using docker-compose & cdklocal)
-Start Local Environment: docker compose up -d --build (from monorepo root).
-
-Deploy CDK Stacks to LocalStack:
+Environment Lifecycle: Developer environments can be created and destroyed as needed, with automated scripts for setup and teardown.
+8.2. Development Workflow
+Setup Developer Environment:
 
 Navigate to cdk/ directory.
 
-Bootstrap LocalStack (once per local environment): npx cdklocal bootstrap aws://000000000000/us-east-1.
+Bootstrap AWS Environment: npx cdk bootstrap aws://<account-id>/<region>.
 
-Deploy your stacks: npx cdklocal deploy --all (or specific stacks in dependency order). This provisions your cloud resources within the LocalStack Docker container.
+Deploy Developer Stack: npx cdk deploy EdTech-Dev-<developer-name>-* --all.
 
-Configure Microservices: Your NestJS apps in Docker Compose read resource IDs/names (like USER_POOL_ID) from environment variables, which you'll populate from cdklocal outputs (e.g., via a script parsing outputs.json).
+Configure Services: Services automatically receive AWS resource IDs from CDK outputs via environment variables or AWS Systems Manager Parameter Store.
 
-Test Locally: Your frontend and backend services connect to localhost ports and LocalStack endpoints. Use awslocal CLI for direct interaction with LocalStack services.
+Development Cycle:
 
-Stop Local Environment: docker compose down -v (removes data; use docker compose down to keep data for next time).
+Make code changes locally.
 
-8.3. Cloud Development Workflow (Deploying to Real AWS)
-Build Production Images: Ensure your microservice Dockerfiles are optimized for production. Build and push these images to AWS ECR.
+Test against real AWS services in your developer environment.
 
-Bootstrap AWS Environment: npx cdk bootstrap aws://<your-aws-account-id>/<your-aws-region> (once per AWS account/region).
+Deploy updated services: pnpm run deploy:dev.
 
-Deploy CDK Stacks to Real AWS: From your cdk/ directory, run npx cdk deploy --all (or specific stacks). This provisions your live infrastructure in AWS.
+Integration testing with real AWS services ensures high confidence.
 
-AWS SDK Configuration in NestJS: In the cloud, do NOT set AWS_ENDPOINT_URL. The AWS SDK will automatically default to real AWS service endpoints. Populate environment variables like USER_POOL_ID with real AWS resource IDs from your CDK outputs.
+Environment Management:
+
+Create Environment: ./scripts/create-dev-env.sh <developer-name>.
+
+Destroy Environment: ./scripts/destroy-dev-env.sh <developer-name> (for cost savings).
+
+Monitor Costs: Each environment is tagged for cost tracking and has automated cost alerts.
 
 9. Solo Developer Strategy
 
 Given the solo developer constraint, the project adopts a sequential development approach:
 
-9.1. LocalStack-First Development
-- Minimize AWS costs during development
-- Use LocalStack for all AWS services during development phases
-- Use Neo4j locally instead of Neptune for cost savings
+9.1. Cloud-First Development Strategy
+- Use real AWS services for high-fidelity development
+- Implement cost-effective developer environments with automated teardown
+- Use Drizzle ORM for excellent TypeScript integration
 - Maintain separate dedicated databases per service
-- Use RDS PostgreSQL instead of Aurora for cost optimization
+- Use RDS PostgreSQL for cost optimization over Aurora
 - Each microservice owns its data completely
-- Gradual migration to AWS services for production
+- Simplified domain patterns reduce complexity
 
 9.2. Phased Implementation
 - Sequential development of microservices
@@ -373,13 +340,14 @@ Given the solo developer constraint, the project adopts a sequential development
 - Comprehensive testing at each milestone
 - Minimal viable product (MVP) approach
 
-9.3. Technology Choices
-- NestJS with TypeScript for all microservices
-- GraphQL API for unified frontend integration with review/rating data
+9.3. Simplified Technology Choices
+- NestJS with TypeScript and simplified DDD patterns
+- Drizzle ORM for excellent PostgreSQL TypeScript integration
+- Hybrid GraphQL architecture (AppSync + Apollo Federation)
+- Use case services instead of separate command/query handlers
+- NestJS CQRS for domain events and aggregate roots
+- Real AWS services with cost-effective developer environments
 - Social authentication via Google, Facebook, Apple ID through AWS Cognito
-- Knowledge verification through certifications and feedback-based systems
-- Separate algorithms for tutor matching and course discovery
-- LocalStack for cost-effective local development
 - Stripe Connect for payment processing with 20% commission model
 
 10. AI Tool Integration Philosophy (Cursor AI)

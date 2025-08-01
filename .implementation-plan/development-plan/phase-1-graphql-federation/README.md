@@ -1,16 +1,63 @@
-# Development Plan: Phase 1 - GraphQL Federation & User Service (Remaining Steps)
+# Phase 1: Infrastructure Modernization (Updated Priority)
 
-**Objective**: To complete the implementation of the `user-service` by setting up its infrastructure (database, caching, auth), event handling, and API layers (HTTP and GraphQL), ensuring all components leverage the enhanced domain model.
+**Status**: 🔄 **Currently Active** - Aligned with [Architecture Improvement Plan](../ARCHITECTURE-IMPROVEMENT-PLAN.md)
 
-This plan outlines the technical steps for the remaining work in Phase 1, from Day 14 to Day 20.
+**Objective**: Execute the infrastructure modernization plan focusing on database migration, cloud environment setup, and unified GraphQL architecture.
 
-## Development Steps
+**Timeline**: 5-7 days | **Priority**: Critical Foundation Work
 
-1.  **[Day 14: Database Infrastructure](./01-day-14-database-infrastructure.md)**: Implement PostgreSQL integration with TypeORM, mapping the enhanced domain value objects to the database schema.
-2.  **[Day 15: Redis, Cognito & S3 Integration](./02-day-15-redis-cognito-s3-integration.md)**: Implement the remaining infrastructure services for caching, authentication, and file storage.
-3.  **[Day 16: EventBridge & Event Handlers](./03-day-16-eventbridge-event-handlers.md)**: Implement the publishing of domain events to EventBridge and create the corresponding handlers.
-4.  **[Day 17: Internal HTTP Controllers](./04-day-17-internal-http-controllers.md)**: Expose the service's functionality via internal RESTful APIs for service-to-service communication.
-5.  **[Day 18: GraphQL Subgraph Schema](./05-day-18-graphql-subgraph-schema.md)**: Define the public-facing GraphQL API for the `user-service` as a federated subgraph.
-6.  **[Day 19: Lambda Resolvers Implementation](./06-day-19-lambda-resolvers-implementation.md)**: Bridge the AppSync supergraph with the `user-service` subgraph using Lambda resolvers.
-7.  **[Day 20: Testing & Integration Validation](./07-day-20-testing-and-integration-validation.md)**: Complete all testing to ensure the `user-service` is robust, reliable, and fully integrated.
-8.  **[Architectural Decision: GraphQL and Lambda](./08-architectural-decision-graphql-and-lambda.md)**: A document clarifying the hybrid architecture for the GraphQL gateway and microservice implementation.
+## 🎯 Updated Phase 1 Priorities
+
+This phase has been updated to align with our [Architecture Improvement Plan](../ARCHITECTURE-IMPROVEMENT-PLAN.md). The focus is now on foundational improvements that will enable all future development.
+
+## 🚀 Infrastructure Modernization Steps
+
+### Step 1: Database Migration (Days 1-2)
+**Priority**: 🔥 **Critical** - Foundation for all services
+
+- **[Database Infrastructure Migration](./01-day-14-database-infrastructure.md)**: 
+  - Replace TypeORM with Drizzle ORM
+  - Implement mergeObject context for domain mapping
+  - Create migration scripts and seeding data
+  - Update User Service repository implementations
+
+### Step 2: Cloud Environment Setup (Days 2-3)  
+**Priority**: 🔥 **Critical** - Development environment fidelity
+
+- **[Real AWS Services Integration](./02-day-15-redis-cognito-s3-integration.md)**:
+  - Remove all LocalStack dependencies
+  - Setup developer-specific AWS environments
+  - Implement AWS Secrets Manager for credentials
+  - Create environment lifecycle management scripts
+
+### Step 3: Unified GraphQL Architecture (Days 3-4)
+**Priority**: 🔥 **Critical** - API architecture foundation
+
+- **[Hybrid GraphQL Implementation](./03-day-16-eventbridge-event-handlers.md)**:
+  - Design AppSync + Federation hybrid approach
+  - Implement Lambda resolvers bridging AppSync to Federation
+  - Create clear public vs internal API boundaries
+
+### Step 4: Simplified Domain Patterns (Days 4-5)
+**Priority**: ⚡ **High** - Code maintainability
+
+- **[Domain Layer Simplification](./04-day-17-internal-http-controllers.md)**:
+  - Implement use case services instead of CQRS handlers
+  - Setup NestJS CQRS for aggregate roots and domain events
+  - Create clean DTO patterns
+
+### Step 5: Service Federation (Days 5-7)
+**Priority**: ⚡ **High** - Service mesh completion
+
+- **[GraphQL Federation Setup](./05-day-18-graphql-subgraph-schema.md)**:
+  - Add NestJS GraphQL modules to User Service
+  - Implement federation directives and resolvers
+  - Connect to Apollo Federation Gateway
+
+## 📋 Legacy Documentation (Reference Only)
+
+The following documents represent the original Phase 1 plan and are kept for reference:
+
+6. **[Lambda Resolvers Implementation](./06-day-19-lambda-resolvers-implementation.md)**: *(Legacy - Updated in Step 3)*
+7. **[Testing & Integration Validation](./07-day-20-testing-and-integration-validation.md)**: *(Still applicable)*
+8. **[Architectural Decision: GraphQL and Lambda](./08-architectural-decision-graphql-and-lambda.md)**: *(Updated in Architecture Plan)*

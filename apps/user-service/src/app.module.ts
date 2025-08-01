@@ -8,6 +8,9 @@ import { UserDomainModule } from "./domain/user-domain.module";
 // Infrastructure modules
 import { InfrastructureModule } from "./infrastructure/infrastructure.module";
 
+// Presentation modules
+import { PresentationModule } from "./presentation/presentation.module";
+
 // Service-specific Configuration
 import { createUserServiceConfigs } from "./config/user-service.config-creators";
 import { UserServiceConfigurationService } from "./config/user-service.configuration";
@@ -33,6 +36,9 @@ import { createZodValidation } from "@edtech/config";
 
     // Application Layer
     UserApplicationModule,
+
+    // Presentation Layer
+    PresentationModule,
   ],
   providers: [
     // Typed configuration service
