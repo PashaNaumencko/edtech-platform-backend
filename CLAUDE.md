@@ -1,153 +1,166 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with this EdTech platform repository.
 
-## Development Commands
+## 🎯 Current Focus: MVP Implementation
+
+**Primary Goal**: Build a working tutoring platform MVP in 4 weeks
+**Status**: Phase 1 - Complete User Service GraphQL Integration
+
+## 📋 Essential Commands
 
 ### Package Management
 - Use `pnpm` as the package manager
 - Install dependencies: `pnpm install`
 
-### Build Commands
-- Build all projects: `pnpm run build`
-- Build libraries only: `pnpm run build:libs`
-- Type check without emit: `pnpm run build:check`
-
 ### Development
-- Start in development mode: `pnpm run start:dev`
-- Start with debugging: `pnpm run start:debug`
-- Production start: `pnpm run start:prod`
+- Start specific service: `pnpm run start:dev [service-name]`
+- Start all services: `pnpm run start:dev`
+- Build all projects: `pnpm run build`
+- Type check: `pnpm run build:check`
 
-### Testing
-- Run unit tests: `pnpm run test`
-- Run e2e tests: `pnpm run test:e2e`
-- Run with coverage: `pnpm run test:cov`
-- Run integration tests: `pnpm run test:integration`
-- Run performance tests: `pnpm run test:performance`
-
-### Linting & Code Quality
-- Lint and fix: `pnpm run lint`
-- Lint check only: `pnpm run lint:check`
+### Code Quality (REQUIRED before commits)
+- **Lint and fix**: `pnpm run lint` (fixes ESLint errors)
+- **Lint check**: `pnpm run lint:check` (checks only)
 
 ### Database Operations
 - Run all migrations: `pnpm run migrate:all`
-- Seed all databases: `pnpm run seed:all`
-- Service-specific migrations: `pnpm run migrate:user`, `pnpm run migrate:payment`, etc.
+- Service-specific: `pnpm run migrate:user`, `pnpm run migrate:payment`
 
-### Docker & Infrastructure
-- Start services: `pnpm run docker:up`
-- Stop services: `pnpm run docker:down`
-- View logs: `pnpm run docker:logs`
-- Clean containers: `pnpm run docker:clean`
-
-### GraphQL
+### GraphQL (Core Integration)
+- Start GraphQL gateway: `pnpm run graphql:gateway`
 - Compose schemas: `pnpm run compose-schemas`
 - Validate schemas: `pnpm run validate-schemas`
-- Start GraphQL gateway: `pnpm run graphql:gateway`
 
-## Architecture Overview
+### Infrastructure
+- Start services: `pnpm run docker:up`
+- Stop services: `pnpm run docker:down`
 
-### Monorepo Structure
-This is a NestJS monorepo using a microservices architecture with the following services:
+## 🏗️ MVP Architecture (Simplified)
 
-**Core Services:**
-- `user-service` - User management, authentication, profiles
-- `payment-service` - Payment processing and billing
-- `learning-service` - Course content and learning paths
-- `content-service` - Content management and delivery
-- `tutor-matching-service` - Tutor-student matching algorithms
-- `reviews-service` - Reviews and ratings system
-- `notification-service` - Messaging and notifications
-- `communication-service` - Real-time communication
-- `analytics-service` - Analytics and reporting
-- `ai-service` - AI-powered features
+### Core Services (MVP Scope)
+1. **user-service** (✅ 80% complete) - User management, auth, profiles
+2. **tutor-matching-service** (⏳ Next) - Tutor search and profiles  
+3. **booking-service** (📋 Planned) - Session booking and payments
+4. **communication-service** (📋 Planned) - Video calling
+5. **review-service** (📋 Planned) - Ratings and reviews
+6. **notification-service** (📋 Planned) - Email notifications
 
-**Shared Libraries (`libs/`):**
-- `@edtech/auth` - Authentication and authorization
-- `@edtech/types` - Shared TypeScript types and DTOs
-- `@edtech/config` - Configuration management
-- `@edtech/security` - Security utilities
+### Shared Libraries
+- `@edtech/auth` - AWS Cognito integration
+- `@edtech/types` - Shared TypeScript types
 - `@edtech/service-auth` - Inter-service authentication
-- `@edtech/cache` - Caching abstraction
-- `@edtech/s3` - S3 file storage utilities
 
-### Domain-Driven Design (DDD)
-Services follow DDD patterns with clear separation:
-- **Domain Layer**: Entities, value objects, domain services, events
-- **Application Layer**: Use cases, DTOs, event handlers
-- **Infrastructure Layer**: Database, external services, event publishing
-- **Presentation Layer**: Controllers, GraphQL resolvers
+### Technology Stack
+- **Framework**: NestJS with TypeScript
+- **Database**: PostgreSQL (all services)
+- **API**: GraphQL Federation
+- **Authentication**: AWS Cognito
+- **Events**: AWS EventBridge
+- **Payments**: Stripe integration
+- **Video**: Twilio Video API
+- **Deployment**: AWS Fargate
 
-### Event-Driven Architecture
-- Uses NestJS CQRS for command/query separation
-- AWS EventBridge for inter-service communication
-- Domain events for business logic decoupling
+## 📁 Service Structure (Standard Pattern)
 
-### Database Architecture
-- **PostgreSQL**: Primary databases for user, payment, reviews, learning services
-- **Redis**: Caching and session storage
-- **Neo4j**: Graph database for tutor matching
-- **LocalStack**: Local AWS services emulation
-
-### Authentication & Authorization
-- **AWS Cognito**: User authentication
-- **Service-to-Service**: JWT-based authentication between microservices
-- **Multi-tenant**: Role-based access control (Student, Tutor, Admin, SuperAdmin)
-
-### GraphQL Federation
-- Apollo Federation for unified GraphQL API
-- Service-specific schemas in `graphql-api/schemas/`
-- Gateway composition and validation
-
-## Development Patterns
-
-### Service Structure
-Each service follows this structure:
 ```
 apps/[service-name]/src/
-├── domain/           # Domain entities, events, value objects
-├── application/      # Use cases, DTOs, event handlers
-├── infrastructure/   # Database, external services
-└── presentation/     # Controllers, resolvers
+├── domain/                 # Business entities and rules
+│   ├── entities/          # Domain entities
+│   ├── value-objects/     # Value objects
+│   ├── events/            # Domain events
+│   └── services/          # Domain services
+├── application/           # Business use cases
+│   ├── use-cases/         # Business operations
+│   ├── dto/               # Data transfer objects
+│   └── event-handlers/    # Event handlers
+├── infrastructure/        # External integrations
+│   ├── persistence/       # Database repositories
+│   └── event-bridge/      # Event publishing
+├── presentation/          # API layer
+│   ├── http/              # REST controllers
+│   └── graphql/           # GraphQL resolvers
+├── config/                # Service configuration
+└── main.ts                # Application entry
 ```
 
-### Shared Library Usage
-Import shared libraries using barrel exports:
-```typescript
-import { AuthModule } from '@edtech/auth';
-import { BaseResponseDto } from '@edtech/types';
-```
+## 🔧 Development Workflow
 
-### Configuration Management
-- Environment-specific configuration using Zod schemas
-- Configuration creators for type-safe config injection
-- Service-specific environment files
+### 1. Before Starting Work
+- Read [MVP_IMPLEMENTATION_PLAN.md](MVP_IMPLEMENTATION_PLAN.md) for current priorities
+- Check current phase in [docs/development/implementation-phases.md](docs/development/implementation-phases.md)
+- Use existing services as templates (especially user-service)
 
-### Error Handling
-- Domain-specific error classes
-- Standardized error response DTOs
-- Global exception filters
+### 2. When Implementing New Service
+- Follow [docs/development/service-template.md](docs/development/service-template.md)
+- Copy structure from user-service as starting point
+- Focus on MVP features only - no advanced features
 
-## Local Development Setup
+### 3. GraphQL Integration (Required)
+- Every service must have GraphQL federation support
+- Follow [docs/development/graphql-federation.md](docs/development/graphql-federation.md)
+- Test integration with federation gateway
 
-1. Install dependencies: `pnpm install`
-2. Start infrastructure: `pnpm run docker:up`
-3. Run setup script: `pnpm run dev:setup`
-4. Validate setup: `pnpm run validate:setup`
-5. Start services: `pnpm run start:dev`
+### 4. Before Committing
+- **MUST run**: `pnpm run lint` to fix ESLint errors
+- Ensure all TypeScript compilation passes
+- Test core functionality manually
 
-## Testing Strategy
+## 🎯 MVP Development Guidelines
 
-- **Unit Tests**: Domain logic and use cases
-- **Integration Tests**: Service interactions and database operations
-- **E2E Tests**: Full service workflows
-- **Performance Tests**: Load and stress testing
+### DO (MVP Focused)
+- ✅ Copy patterns from user-service
+- ✅ Keep domain logic simple and working
+- ✅ Use PostgreSQL for all databases
+- ✅ Focus on core user journeys
+- ✅ Use existing AWS services integration patterns
+- ✅ Test manually through GraphQL playground
 
-## Infrastructure as Code
+### DON'T (Avoid Over-Engineering)
+- ❌ Add complex domain patterns not in user-service
+- ❌ Create new infrastructure patterns
+- ❌ Add features not in MVP scope
+- ❌ Optimize prematurely
+- ❌ Add complex caching or performance features
+- ❌ Create comprehensive test suites (manual testing OK for MVP)
 
-- **AWS CDK**: Infrastructure definitions in `cdk/`
-- **LocalStack**: Local AWS services for development
-- **Docker Compose**: Local database and service orchestration
+## 📚 Key Documentation
+
+### Implementation Guides
+- **[MVP Implementation Plan](MVP_IMPLEMENTATION_PLAN.md)** - Complete roadmap
+- **[Service Template](docs/development/service-template.md)** - How to create new services
+- **[GraphQL Federation](docs/development/graphql-federation.md)** - GraphQL setup
+
+### Current Status
+- **[Implementation Phases](docs/development/implementation-phases.md)** - Track current progress
+- **[User Service](docs/services/user-service.md)** - Reference implementation
+
+## 🚨 Important Notes
+
+### ESLint Errors Will Block Commits
+- Husky pre-commit hook runs `lint-staged`
+- Any ESLint errors will prevent commits
+- **Always run** `pnpm run lint` before committing
+
+### MVP Timeline is Critical
+- We have 4 weeks to build working MVP
+- Focus on getting core features working
+- Polish and optimization come after MVP
+
+### Use Existing Patterns
+- Don't reinvent - copy what works from user-service
+- GraphQL federation pattern is established
+- Domain layer patterns are proven
+
+## 🔄 Current Development Priority
+
+**Phase 1: Complete User Service GraphQL Integration**
+1. Connect User Service to Federation Gateway
+2. Test end-to-end GraphQL queries  
+3. Fix any integration issues
+4. Begin Tutor Matching Service
+
+**Next**: Follow [MVP_IMPLEMENTATION_PLAN.md](MVP_IMPLEMENTATION_PLAN.md) for detailed steps.
 
 ## Important Development Guidelines
 
