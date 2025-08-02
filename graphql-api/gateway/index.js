@@ -1,42 +1,14 @@
-const { ApolloGateway } = require('@apollo/gateway');
+const { ApolloGateway, IntrospectAndCompose } = require('@apollo/gateway');
 const { ApolloServer } = require('apollo-server-express');
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 
 // Gateway configuration
 const gateway = new ApolloGateway({
-  supergraphSdl: () => {
-    try {
-      const schemaPath = path.resolve(__dirname, '../schemas/schema.graphql');
-      if (fs.existsSync(schemaPath)) {
-        return fs.readFileSync(schemaPath, 'utf8');
-      } else {
-        console.warn('⚠️  Supergraph schema not found. Run `npm run compose-schemas` first.');
-        // Return minimal schema for development
-        return `
-          type Query {
-            _gateway: String
-          }
-        `;
-      }
-    } catch (error) {
-      console.error('❌ Error loading supergraph schema:', error.message);
-      throw error;
-    }
-  },
-  
-  // Service list for introspection
-  serviceList: [
-    { name: 'user-service', url: 'http://localhost:3001/graphql' },
-    { name: 'learning-service', url: 'http://localhost:3002/graphql' },
-    { name: 'content-service', url: 'http://localhost:3003/graphql' },
-    { name: 'payment-service', url: 'http://localhost:3004/graphql' },
-    { name: 'tutor-matching-service', url: 'http://localhost:3005/graphql' },
-    { name: 'communication-service', url: 'http://localhost:3006/graphql' },
-    { name: 'reviews-service', url: 'http://localhost:3007/graphql' },
-    { name: 'analytics-service', url: 'http://localhost:3008/graphql' }
-  ],
+  supergraphSdl: new IntrospectAndCompose({
+    subgraphs: [
+      { name: 'user-service', url: 'http://localhost:3001/graphql' }
+    ],
+  }),
   
   // Development mode settings
   debug: process.env.NODE_ENV !== 'production',
@@ -125,6 +97,9 @@ async function startGateway() {
         }
       ]
     });
+    
+    // Start server first
+    await server.start();
     
     // Apply middleware
     server.applyMiddleware({ app, path: '/graphql' });
