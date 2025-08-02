@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloDriverConfig } from '@nestjs/graphql';
+import { ApolloFederationDriver, ApolloFederationDriverConfig } from '@nestjs/apollo';
 import { UserResolver } from './resolvers/user.resolver';
-import { UserApplicationModule } from '../../application/user-application.module';
 
 @Module({
   imports: [
-    GraphQLModule.forRoot<ApolloDriverConfig>({
-      autoSchemaFile: true,
+    GraphQLModule.forRoot<ApolloFederationDriverConfig>({
+      driver: ApolloFederationDriver,
+      typePaths: ['./**/*.graphql'],
       playground: process.env.NODE_ENV !== 'production',
       introspection: true,
       path: '/graphql',
-    } as ApolloDriverConfig),
-    UserApplicationModule,
+      context: ({ req }) => ({ req }),
+    }),
   ],
   providers: [UserResolver],
 })
