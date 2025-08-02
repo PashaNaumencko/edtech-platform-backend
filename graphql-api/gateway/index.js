@@ -6,7 +6,8 @@ const express = require('express');
 const gateway = new ApolloGateway({
   supergraphSdl: new IntrospectAndCompose({
     subgraphs: [
-      { name: 'user-service', url: 'http://localhost:3001/graphql' }
+      { name: 'user-service', url: 'http://localhost:3001/graphql' },
+      { name: 'tutor-matching-service', url: 'http://localhost:3002/graphql' },
     ],
   }),
   
