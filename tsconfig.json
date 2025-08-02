@@ -31,7 +31,9 @@
       "@edtech/cache": ["libs/cache/src"],
       "@edtech/cache/*": ["libs/cache/src/*"],
       "@edtech/s3": ["libs/s3/src"],
-      "@edtech/s3/*": ["libs/s3/src/*"]
+      "@edtech/s3/*": ["libs/s3/src/*"],
+      "@edtech/constants": ["libs/constants/src"],
+      "@edtech/constants/*": ["libs/constants/src/*"]
     }
   }
 }

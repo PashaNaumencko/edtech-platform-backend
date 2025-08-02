@@ -1,0 +1,60 @@
+/**
+ * Tutor-related constants and enums shared across services
+ */
+
+export enum TutorStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  REJECTED = 'REJECTED',
+}
+
+export enum TutorSubject {
+  MATHEMATICS = 'MATHEMATICS',
+  PHYSICS = 'PHYSICS',
+  CHEMISTRY = 'CHEMISTRY',
+  BIOLOGY = 'BIOLOGY',
+  ENGLISH = 'ENGLISH',
+  HISTORY = 'HISTORY',
+  GEOGRAPHY = 'GEOGRAPHY',
+  COMPUTER_SCIENCE = 'COMPUTER_SCIENCE',
+  PROGRAMMING = 'PROGRAMMING',
+  LANGUAGES = 'LANGUAGES',
+  MUSIC = 'MUSIC',
+  ART = 'ART',
+  OTHER = 'OTHER',
+}
+
+export enum ExperienceLevel {
+  BEGINNER = 'BEGINNER',
+  INTERMEDIATE = 'INTERMEDIATE',
+  ADVANCED = 'ADVANCED',
+  EXPERT = 'EXPERT',
+}
+
+// Tutor pricing constants
+export const TUTOR_PRICING = {
+  MIN_HOURLY_RATE: 10,
+  MAX_HOURLY_RATE: 500,
+  DEFAULT_CURRENCY: 'USD',
+  SUPPORTED_CURRENCIES: ['USD', 'EUR', 'GBP'] as const,
+} as const;
+
+// Tutor validation constants  
+export const TUTOR_VALIDATION = {
+  MIN_EXPERIENCE_DESCRIPTION_LENGTH: 50,
+  MAX_EXPERIENCE_DESCRIPTION_LENGTH: 2000,
+  MIN_EDUCATION_DESCRIPTION_LENGTH: 20,
+  MAX_EDUCATION_DESCRIPTION_LENGTH: 1000,
+  MAX_SUBJECTS_COUNT: 10,
+  MAX_LANGUAGES_COUNT: 5,
+} as const;
+
+// Rating constants
+export const RATING_CONSTANTS = {
+  MIN_RATING: 1,
+  MAX_RATING: 5,
+  DEFAULT_RATING: 0,
+  MIN_REVIEWS_FOR_DISPLAY: 3,
+} as const;

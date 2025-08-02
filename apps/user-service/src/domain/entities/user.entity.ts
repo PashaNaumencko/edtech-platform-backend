@@ -8,17 +8,17 @@ import {
 } from "../events";
 
 export enum UserStatus {
-  ACTIVE = "active",
-  INACTIVE = "inactive",
-  SUSPENDED = "suspended",
-  PENDING_VERIFICATION = "pending_verification",
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  SUSPENDED = "SUSPENDED",
+  PENDING_VERIFICATION = "PENDING_VERIFICATION",
 }
 
 export enum UserRoleType {
-  STUDENT = "student",
-  TUTOR = "tutor",
-  ADMIN = "admin",
-  SUPERADMIN = "superadmin",
+  STUDENT = "STUDENT",
+  TUTOR = "TUTOR",
+  ADMIN = "ADMIN",
+  SUPERADMIN = "SUPERADMIN",
 }
 
 interface CreateUserData {
