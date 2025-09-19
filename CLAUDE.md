@@ -2,10 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this EdTech platform repository.
 
-## 🎯 Current Focus: MVP Implementation
+## 🎯 Current Focus: Complete Architecture Implementation
 
-**Primary Goal**: Build a working tutoring platform MVP in 4 weeks
-**Status**: Phase 1 - Complete User Service GraphQL Integration
+**Primary Goal**: Implement the new comprehensive microservices architecture
+**Status**: Phase 1 - Project cleanup and service restructuring completed
 
 ## 📋 Essential Commands
 
@@ -25,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ### Database Operations
 - Run all migrations: `pnpm run migrate:all`
-- Service-specific: `pnpm run migrate:user`, `pnpm run migrate:payment`
+- Service-specific: `pnpm run drizzle:identity:migrate`, `pnpm run drizzle:user:migrate`, `pnpm run drizzle:tutor:migrate`, `pnpm run drizzle:matching:migrate`, `pnpm run drizzle:lesson:migrate`, `pnpm run drizzle:payment:migrate`
 
 ### GraphQL (Core Integration)
 - Start GraphQL gateway: `pnpm run graphql:gateway`
@@ -36,15 +36,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - Start services: `pnpm run docker:up`
 - Stop services: `pnpm run docker:down`
 
-## 🏗️ MVP Architecture (Simplified)
+## 🏗️ New Microservices Architecture
 
-### Core Services (MVP Scope)
-1. **user-service** (✅ 80% complete) - User management, auth, profiles
-2. **tutor-matching-service** (⏳ Next) - Tutor search and profiles  
-3. **booking-service** (📋 Planned) - Session booking and payments
-4. **communication-service** (📋 Planned) - Video calling
-5. **review-service** (📋 Planned) - Ratings and reviews
-6. **notification-service** (📋 Planned) - Email notifications
+### Core Services (Based on Domain Contexts)
+1. **identity-service** (Context 1) - User registration, email verification, COPPA compliance
+2. **tutor-service** (Context 2) - Tutor onboarding, verification, qualification management
+3. **matching-service** (Context 3) - Smart search, connection requests, match establishment
+4. **lesson-service** (Context 4) - Lesson booking, video sessions, file sharing
+5. **payment-service** (Context 4) - Payment processing, commission calculation, payouts
 
 ### Shared Libraries
 - `@edtech/auth` - AWS Cognito integration
