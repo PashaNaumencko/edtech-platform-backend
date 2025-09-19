@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloFederationDriver, ApolloFederationDriverConfig } from '@nestjs/apollo';
 import { DrizzleModule } from '@edtech/drizzle';
 
 // Use Cases
@@ -16,12 +14,12 @@ import { DrizzleUserRepository } from './infrastructure/repositories/drizzle-use
 // Constants
 import { DI_TOKENS } from './constants';
 
-// Resolvers
-import { UserResolver } from './presentation/graphql/resolvers/user.resolver';
+// Presentation
+import { PresentationModule } from './presentation/presentation.module';
 
 /**
  * App Module following unified microservice template
- * MVP-focused with Drizzle ORM and essential components
+ * REST API focused with Drizzle ORM and essential components
  */
 @Module({
   imports: [
@@ -38,15 +36,8 @@ import { UserResolver } from './presentation/graphql/resolvers/user.resolver';
       ssl: process.env.NODE_ENV === 'production',
     }),
     
-    // GraphQL Federation
-    GraphQLModule.forRoot<ApolloFederationDriverConfig>({
-      driver: ApolloFederationDriver,
-      autoSchemaFile: {
-        federation: 2,
-      },
-      playground: true,
-      introspection: true,
-    }),
+    // Presentation layer (REST APIs)
+    PresentationModule,
   ],
   providers: [
     // Repository
@@ -60,9 +51,6 @@ import { UserResolver } from './presentation/graphql/resolvers/user.resolver';
     
     // Event Handlers
     UserCreatedEventHandler,
-    
-    // Resolvers
-    UserResolver,
   ],
 })
 export class AppModule {}
