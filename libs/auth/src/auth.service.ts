@@ -16,13 +16,6 @@ export interface AuthResult {
   error?: string;
 }
 
-export interface AppSyncIdentity {
-  sub: string;
-  issuer: string;
-  username: string;
-  claims: Record<string, any>;
-}
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -100,39 +93,6 @@ export class AuthService {
   }
 
   /**
-   * Validate AppSync context
-   */
-  async validateAppSyncContext(identity: AppSyncIdentity): Promise<AuthContext | null> {
-    try {
-      this.logger.debug(`Validating AppSync identity for user: ${identity.sub}`);
-
-      // Validate the user exists and is active
-      const isValidUser = await this.cognitoAuthService.validateUser(identity.sub);
-      if (!isValidUser) {
-        this.logger.warn(`Invalid user: ${identity.sub}`);
-        return null;
-      }
-
-      // Get user email
-      const email = await this.cognitoAuthService.getUserEmail(identity.sub);
-      if (!email) {
-        this.logger.warn(`No email found for user: ${identity.sub}`);
-        return null;
-      }
-
-      return {
-        userId: identity.sub,
-        email,
-        roles: identity.claims["cognito:groups"] || [],
-        isAuthenticated: true,
-      };
-    } catch (error) {
-      this.logger.error(`Error validating AppSync context for ${identity.sub}:`, error);
-      return null;
-    }
-  }
-
-  /**
    * Check if user has specific role
    */
   async hasRole(userId: string, requiredRole: string): Promise<boolean> {
@@ -153,12 +113,26 @@ export class AuthService {
   }
 
   /**
-   * Sign out user (placeholder - implement as needed)
+   * Create user in Cognito
    */
-  signOut(): boolean {
+  async createUser(username: string, email: string, password: string, attributes?: Record<string, any>): Promise<boolean> {
+    try {
+      this.logger.debug(`Creating user: ${username}`);
+      await this.cognitoUserPoolService.createUser({ username, email, password, attributes });
+      return true;
+    } catch (error) {
+      this.logger.error(`Error creating user ${username}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Sign out user
+   */
+  async signOut(accessToken: string): Promise<boolean> {
     try {
       this.logger.debug("Signing out user");
-      // TODO: Implement actual sign out logic
+      await this.cognitoAuthService.signOut(accessToken);
       return true;
     } catch (error) {
       this.logger.error("Sign out error:", error);

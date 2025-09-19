@@ -1,10 +1,10 @@
 # Shared Authentication Library
 
-This library provides shared authentication functionality across the entire EdTech platform, supporting multiple authentication layers:
+This library provides shared authentication functionality across the entire EdTech platform, supporting:
 
-- **User Authentication** (Cognito)
-- **Service-to-Service Authentication** (Cognito/IAM)
-- **AppSync GraphQL Authentication** (Cognito)
+- **User Authentication** (AWS Cognito)
+- **Service-to-Service Authentication** (AWS IAM)
+- **GraphQL Federation Authentication** (JWT tokens)
 
 ## Architecture
 

@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:libs": "nest build types && nest build auth && nest build security && nest build config && nest build service-auth && nest build cache && nest build s3 && nest build constants && nest build drizzle",
+    "build:libs": "nest build types && nest build auth && nest build config && nest build service-auth && nest build cache && nest build s3 && nest build constants && nest build drizzle",
     "build:check": "tsc --noEmit",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -164,7 +164,6 @@
     "moduleNameMapper": {
       "^@edtech/types(|/.*)$": "<rootDir>/libs/types/src/$1",
       "^@edtech/auth(|/.*)$": "<rootDir>/libs/auth/src/$1",
-      "^@edtech/security(|/.*)$": "<rootDir>/libs/security/src/$1",
       "^@edtech/config(|/.*)$": "<rootDir>/libs/config/src/$1",
       "^@edtech/service-auth(|/.*)$": "<rootDir>/libs/service-auth/src/$1",
       "^@edtech/cache(|/.*)$": "<rootDir>/libs/cache/src/$1",
