@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { GraphQLModule } from '@nestjs/graphql';
-import { ApolloFederationDriver, ApolloFederationDriverConfig } from '@nestjs/apollo';
 import { DrizzleModule } from '@edtech/drizzle';
 
 // Use Cases
@@ -19,9 +17,6 @@ import { DrizzleMatchingRequestRepository } from './infrastructure/repositories/
 // Constants
 import { DI_TOKENS } from './constants';
 
-// Resolvers
-import { TutorResolver, MatchingRequestResolver } from './presentation/graphql/resolvers/tutor.resolver';
-
 @Module({
   imports: [
     // CQRS for events and commands
@@ -35,16 +30,6 @@ import { TutorResolver, MatchingRequestResolver } from './presentation/graphql/r
       password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'edtech_tutor_db',
       ssl: process.env.NODE_ENV === 'production',
-    }),
-    
-    // GraphQL Federation
-    GraphQLModule.forRoot<ApolloFederationDriverConfig>({
-      driver: ApolloFederationDriver,
-      autoSchemaFile: {
-        federation: 2,
-      },
-      playground: true,
-      introspection: true,
     }),
   ],
   providers: [
@@ -65,10 +50,6 @@ import { TutorResolver, MatchingRequestResolver } from './presentation/graphql/r
     // Event Handlers
     TutorCreatedHandler,
     MatchingRequestCreatedHandler,
-    
-    // Resolvers
-    TutorResolver,
-    MatchingRequestResolver,
   ],
 })
 export class AppModule {}

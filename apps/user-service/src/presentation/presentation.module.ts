@@ -1,21 +1,18 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from './http/http.module';
-import { UserGraphQLModule } from './graphql/graphql.module';
 
 /**
  * Presentation Module
  * 
- * Combines all presentation layer modules including HTTP controllers and GraphQL resolvers.
- * This module provides both internal service-to-service HTTP APIs and GraphQL federation endpoints.
+ * Combines all presentation layer modules for REST API endpoints.
+ * This module provides both client-facing APIs (port 3000) and internal service-to-service APIs (port 3001).
  */
 @Module({
   imports: [
-    HttpModule,        // Internal HTTP controllers for service-to-service communication
-    UserGraphQLModule, // GraphQL federation resolvers for external API
+    HttpModule, // REST controllers for dual-port architecture
   ],
   exports: [
     HttpModule,
-    UserGraphQLModule,
   ],
 })
 export class PresentationModule {}

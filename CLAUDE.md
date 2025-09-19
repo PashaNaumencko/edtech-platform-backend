@@ -27,10 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - Run all migrations: `pnpm run migrate:all`
 - Service-specific: `pnpm run drizzle:identity:migrate`, `pnpm run drizzle:user:migrate`, `pnpm run drizzle:tutor:migrate`, `pnpm run drizzle:matching:migrate`, `pnpm run drizzle:lesson:migrate`, `pnpm run drizzle:payment:migrate`
 
-### GraphQL (Core Integration)
-- Start GraphQL gateway: `pnpm run graphql:gateway`
-- Compose schemas: `pnpm run compose-schemas`
-- Validate schemas: `pnpm run validate-schemas`
+### API Development
+- Start services with dual ports (3000/3001) for client and internal APIs
 
 ### Infrastructure
 - Start services: `pnpm run docker:up`
