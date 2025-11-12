@@ -149,13 +149,14 @@
       "<rootDir>/libs/"
     ],
     "moduleNameMapper": {
-      "^@edtech/types(|/.*)$": "<rootDir>/libs/types/src/$1",
+      "^@edtech-platform/shared(|/.*)$": "<rootDir>/libs/shared/src/$1",
       "^@edtech/auth(|/.*)$": "<rootDir>/libs/auth/src/$1",
-      "^@edtech/config(|/.*)$": "<rootDir>/libs/config/src/$1",
-      "^@edtech/service-auth(|/.*)$": "<rootDir>/libs/service-auth/src/$1",
       "^@edtech/cache(|/.*)$": "<rootDir>/libs/cache/src/$1",
+      "^@edtech/config(|/.*)$": "<rootDir>/libs/config/src/$1",
+      "^@edtech/drizzle(|/.*)$": "<rootDir>/libs/drizzle/src/$1",
       "^@edtech/s3(|/.*)$": "<rootDir>/libs/s3/src/$1",
-      "^@edtech/drizzle(|/.*)$": "<rootDir>/libs/drizzle/src/$1"
+      "^@edtech/service-auth(|/.*)$": "<rootDir>/libs/service-auth/src/$1",
+      "^@edtech/types(|/.*)$": "<rootDir>/libs/types/src/$1"
     }
   }
 }

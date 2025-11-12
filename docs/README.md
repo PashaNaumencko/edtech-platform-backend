@@ -1,57 +1,52 @@
-# EdTech Platform - Complete Architecture & Domain Report
+# EdTech Platform - Complete Architecture & Implementation Guide
 
 ## Executive Summary
 
-This document provides a comprehensive overview of the edtech platform architecture, derived from extensive event storming sessions and technical architecture discussions. The platform follows a microservices architecture with event-driven communication, hosted on AWS infrastructure.
+This document provides a comprehensive overview of our EdTech platform, a tutor-student matching service built with modern microservices architecture, Domain-Driven Design principles, and AWS cloud infrastructure. The platform facilitates personalized tutoring experiences while ensuring COPPA compliance and quality control through rigorous tutor verification.
 
-**Platform Type:** Student-Tutor Marketplace with Live Learning Capabilities
-**Architecture Pattern:** Domain-Driven Design with Microservices
-**Infrastructure:** AWS Cloud with Serverless Containers
-**Revenue Model:** 20% Commission on Successful Lessons
+**Tech Stack:** NestJS, CQRS, DDD, PostgreSQL, AWS (ECS, Lambda, EventBridge, Cognito, S3)
+**Architecture:** Event-Driven Microservices with Hexagonal (Ports & Adapters) pattern
+**Development Approach:** AI-Assisted with Claude Code, Startup-friendly with gradual complexity
 
 ---
 
 ## Table of Contents
 
-1. [Domain Architecture](#domain-architecture)
-2. [Technical Architecture](#technical-architecture)
-3. [Infrastructure Decisions](#infrastructure-decisions)
-4. [Microservices Design](#microservices-design)
-5. [Real-Time Features](#real-time-features)
-6. [Security & Authentication](#security--authentication)
-7. [Event-Driven Communication](#event-driven-communication)
-8. [Database Strategy](#database-strategy)
-9. [External Integrations](#external-integrations)
-10. [Implementation Roadmap](#implementation-roadmap)
+1. [Business Model & Domain Analysis](#business-model--domain-analysis)
+2. [Technical Architecture Decisions](#technical-architecture-decisions)
+3. [Domain-Driven Design Implementation](#domain-driven-design-implementation)
+4. [Identity Service - Complete Implementation](#identity-service---complete-implementation)
+5. [Infrastructure & Deployment](#infrastructure--deployment)
+6. [Development Patterns & Best Practices](#development-patterns--best-practices)
+7. [Implementation Roadmap](#implementation-roadmap)
 
 ---
 
-## Domain Architecture
+## Business Model & Domain Analysis
 
-### Event Storming Results
+### Core Business Model
 
-Through comprehensive event storming sessions, we identified four core bounded contexts that represent the complete user journey:
+**Revenue Model:** 20% commission on completed lessons
+**Target Market:** K-12 students (ages 5-18) and qualified tutors
+**Value Proposition:** Safe, verified, personalized tutoring platform
 
-### Context 1: Identity and Student Onboarding
+### Event Storming Results - Bounded Contexts
+
+#### Context 1: Identity & Student Onboarding ✅ IMPLEMENTED
 
 **Purpose:** User registration, email verification, and student profile creation with COPPA compliance
 
 **Key Aggregates:**
 
-- `User Account` - Core identity management
-- `Student Profile` - Student-specific information
-- `Parent Consent` - COPPA compliance for minors
+- `UserAccount` - Core identity management with Cognito integration
+- `StudentProfile` - Student-specific information with COPPA compliance
+- `ParentConsent` - COPPA compliance for minors (automated workflow)
 
 **Critical Domain Events:**
 
-- `AccountCreated` - User successfully registered
-- `EmailVerificationSent` - Verification email dispatched
-- `AccountActivated` - Email verification completed
-- `StudentProfileCreated` - Profile information collected
-- `MinorStatusDetected` - Student under 18 identified
-- `ParentConsentRequired` - COPPA compliance triggered
-- `ParentConsentGranted` - Legal guardian approval received
-- `StudentReadyForPlatform` - Complete onboarding finished
+- `AccountCreated` → `EmailVerificationSent` → `AccountActivated`
+- `StudentProfileCreated` → `MinorStatusDetected` → `ParentConsentRequired`
+- `ParentConsentGranted` → `StudentReadyForPlatform`
 
 **Business Policies:**
 
@@ -59,889 +54,717 @@ Through comprehensive event storming sessions, we identified four core bounded c
 - COPPA Compliance (Under 18) Policy
 - Parent Consent Required Policy
 
-**External Dependencies:**
+#### Context 2: Tutor Onboarding and Verification ✅ IMPLEMENTED
 
-- AWS Cognito (Authentication)
-- AWS SES (Email Service)
-
-### Context 2: Tutor Onboarding and Verification
-
-**Purpose:** Tutor qualification verification and approval process with quality control
+**Purpose:** Tutor registration, profile creation, document verification, and admin approval
 
 **Key Aggregates:**
 
-- `Tutor Profile` - Tutor personal and professional information
-- `Qualification Portfolio` - Credentials and experience
-- `Admin Review Session` - Verification workflow
+- `TutorProfile` - Tutor qualifications, experience, and verification status
+- `TutorVerification` - Document submission and admin review process
+- `VerificationDecision` - Admin approval/rejection with reasoning
 
 **Critical Domain Events:**
 
-- `TutorProfileCreated` - Basic profile established
-- `QualificationsAdded` - Credentials submitted
-- `ReviewRequested` - Submitted for admin approval
-- `AddedToAdminReviewQueue` - Queued for review
-- `AdminReviewStarted` - Review process initiated
-- `QualificationsAssessed` - Credentials evaluated
-- `TutorApproved` - Verification successful
-- `TutorRejected` - Verification failed
-- `TutorAvailableForMatching` - Ready for student connections
+- `TutorProfileCreated` → `TutorDocumentsSubmitted` → `TutorReviewStarted`
+- `TutorApproved` → `TutorReadyForPlatform` | `TutorRejected` | `AdditionalInfoRequested`
 
 **Business Policies:**
 
-- Complete Profile Required Policy
-- Admin Review Required Policy
-- 24-hour Review SLA Policy
-- Qualification Assessment Criteria Policy
+- Tutor Age Eligibility (18+) Policy
+- Document Verification Requirements Policy
+- Hourly Rate Bounds Policy ($5-$500)
+- Subject Qualification Verification Policy
 
-**External Dependencies:**
+#### Context 3: Matching and Communication 🔮 FUTURE
 
-- Admin Review Dashboard
-- Tutor Notification Service
+**Key Output:** "Match Established" + "Chat Channel Created"
 
-### Context 3: Matching and Communication
+#### Context 4: Lesson Booking and Payment 🔮 FUTURE
 
-**Purpose:** Smart search algorithms, connection requests, and initial communication setup
+**Key Output:** "Lesson Completed" + "Tutor Payout Scheduled" (20% commission)
 
-**Key Aggregates:**
-
-- `Search Session` - Search execution and results
-- `Connection Request` - Student-tutor connection attempts
-- `Student-Tutor Match` - Established relationships
-- `Chat Channel` - Communication infrastructure
-
-**Critical Domain Events:**
-
-- `SmartSearchExecuted` - Search algorithm triggered
-- `TutorsRankedByAlgorithm` - ML-powered ranking applied
-- `SearchResultsGenerated` - Results prepared for display
-- `ConnectionRequestSent` - Student initiates contact
-- `TutorNotified` - Push notification dispatched
-- `ConnectionRequestViewed` - Tutor reviews request
-- `ConnectionAccepted` - Tutor accepts connection
-- `MatchEstablished` - Relationship confirmed
-- `ChatChannelCreated` - Communication enabled
-
-**Business Policies:**
-
-- Smart Ranking Algorithm Policy
-- Subject Matching Policy
-- 24-hour Request Expiry Policy
-- Auto Chat Creation on Match Policy
-
-**External Dependencies:**
-
-- Search Engine with Ranking (Elasticsearch)
-- Push Notification Service
-- Chat Infrastructure Service
-
-### Context 4: Booking Lesson and Payment
-
-**Purpose:** End-to-end lesson delivery with payment processing and commission handling
-
-**Key Aggregates:**
-
-- `Lesson Booking` - Scheduling and reservation
-- `Video Session` - Live lesson infrastructure
-- `Lesson Chat` - Real-time communication during lessons
-- `Payment Transaction` - Financial processing
-
-**Critical Domain Events:**
-
-- `BookingInitiated` - Student starts booking process
-- `TimeSlotReserved` - Schedule slot allocated
-- `PaymentProcessed` - Transaction completed
-- `LessonConfirmed` - Booking finalized
-- `VideoRoomCreated` - Technical infrastructure prepared
-- `BothParticipantsJoined` - Lesson participants connected
-- `LessonStarted` - Active learning session begun
-- `RealtimeMessageSent` - Chat during lesson
-- `LessonFileShared` - Resource sharing during session
-- `LessonCompleted` - Session ended
-- `PaymentReleased` - Funds released to tutor
-- `TutorPayoutScheduled` - Commission calculated and payout initiated
-
-**Business Policies:**
-
-- Payment Required Before Confirmation Policy
-- Auto Video Room Creation Policy
-- Auto-start When Both Join Policy
-- Real-time Message Delivery Policy
-- Pay Tutor After Completion Policy
-- 20% Platform Commission Policy
-
-**External Dependencies:**
-
-- Stripe Payment Processing
-- Agora.io Video Platform
-- WebSocket Real-time Messaging
-- AWS S3 File Storage
-
-### Cross-Context Event Flow
+### Context Integration Flow
 
 ```
-Context 1 (Identity) → Context 3 (Matching)
-"StudentReadyForPlatform" → Enables search functionality
-
-Context 2 (Tutor) → Context 3 (Matching)
-"TutorAvailableForMatching" → Appears in search results
-
-Context 3 (Matching) → Context 4 (Lessons)
-"MatchEstablished" → Enables lesson booking
-
-Context 4 (Lessons) → Future Analytics
-"LessonCompleted" → Learning insights and platform metrics
+Identity → "Student Ready for Platform" → Matching Service
+Tutor → "Tutor Ready for Platform" → Matching Service
+Matching → "Match Established" → Lesson Service
+Lesson → "Lesson Completed" → Analytics Service
 ```
 
 ---
 
-## Technical Architecture
+## Technical Architecture Decisions
 
-### Core Architecture Pattern
+### Core Architecture Patterns
 
-**Selected Pattern:** Direct API Gateway + Microservices (Not BFF)
+**Selected Pattern:** Direct API Gateway + Microservices (Dual Port Architecture)
 
-**Rationale:**
+Each microservice implements:
 
-- Simpler than Backend-for-Frontend patterns
-- Reduced latency (no extra network hops)
-- Industry standard used by Netflix, Spotify, Airbnb
-- Easier to maintain and debug
-- Standard tooling compatibility
-
-### Dual Port Architecture
-
-Each microservice implements two distinct APIs:
-
-**Port 3000 - Client-Facing API:**
-
-- Public internet access
-- Authentication required
-- Rate limiting applied
-- CORS policies enforced
-- Input validation and sanitization
-- Sanitized responses (no internal data)
-
-**Port 3001 - Internal API:**
-
-- VPC-only access
-- No authentication (trusted network)
-- No rate limiting
-- Full data access including sensitive information
-- Batch operations support
-- Performance optimized for service-to-service calls
-
-### Network Architecture
-
-```
-Internet → Public ALB (Port 80) → Service:3000 (Client API)
-                                      ↓
-Internal ALB (VPC only) → Service:3001 (Internal API) ← Other Services
-```
-
----
-
-## Infrastructure Decisions
-
-### AWS Core Services
-
-**Compute:**
-
-- **ECS Fargate** - Serverless containers for microservices
-  - Rationale: No infrastructure management, auto-scaling, pay-per-use
-  - Cost-effective for startup growth trajectory
-
-**Networking:**
-
-- **Application Load Balancer (ALB)** - Routes traffic to microservices
-- **VPC with Private Subnets** - Network isolation for internal APIs
-- **Security Groups** - Network-level access control
-
-**Storage:**
-
-- **ElastiCache Redis** - Simple caching layer
-- **S3** - File storage for lesson materials and recordings
-- **CloudFront** - Global content delivery network
-
-**Messaging:**
-
-- **EventBridge** - Async messaging between services
-- **API Gateway** - REST + WebSocket endpoints
-
-**Monitoring & Deployment:**
-
-- **CloudWatch** - Logging and monitoring
-- **CDK** - Infrastructure as Code
-- **AWS Systems Manager** - Configuration management
-
-### Caching Strategy
-
-**Three-Tier Caching Approach:**
-
-- Course catalog: 30 minutes (infrequent changes)
-- User progress: 10 minutes (regular updates)
-- Live session data: 5 minutes (highly dynamic)
-
-**Cache Invalidation:**
-
-- Event-driven for critical updates
-- TTL-based for most data
-- Pattern-based for bulk invalidation
-
----
-
-## Microservices Design
-
-### Service 1: Identity Service (Context 1)
-
-**Responsibilities:**
-
-- User registration and email verification
-- Student profile management
-- COPPA compliance workflow
-- Parent consent management
-
-**Client API (Port 3000):**
-
-```
-POST /auth/register
-POST /auth/verify-email
-GET /users/profile
-POST /students/profile
-PUT /students/profile
-GET /students/consent-status
-```
-
-**Internal API (Port 3001):**
-
-```
-GET /internal/users/{id}
-POST /internal/users/{id}/activate
-GET /internal/students/{id}/consent-status
-POST /internal/students/{id}/consent-granted
-GET /internal/users/search?email={email}
-```
-
-**Events Published:**
-
-- AccountCreated
-- StudentReadyForPlatform
-- ParentConsentGranted
-
-**Database:** PostgreSQL for ACID compliance (user data integrity)
-
-### Service 2: Tutor Service (Context 2)
-
-**Responsibilities:**
-
-- Tutor profile and qualification management
-- Admin review workflow coordination
-- Verification status tracking
-
-**Client API (Port 3000):**
-
-```
-POST /tutors/profile
-PUT /tutors/profile
-POST /tutors/qualifications
-POST /tutors/submit-review
-GET /tutors/status
-GET /tutors/profile
-```
-
-**Internal API (Port 3001):**
-
-```
-GET /internal/tutors/{id}/verification-status
-POST /internal/tutors/{id}/approve
-POST /internal/tutors/{id}/reject
-GET /internal/tutors/available-for-matching
-GET /internal/tutors/search
-```
-
-**Events Published:**
-
-- TutorAvailableForMatching
-- TutorApproved
-- ReviewRequested
-
-**Events Consumed:**
-
-- AccountCreated (from Identity Service)
-
-**Database:** PostgreSQL for structured tutor data and qualifications
-
-### Service 3: Matching Service (Context 3)
-
-**Responsibilities:**
-
-- Smart search with ML-powered ranking
-- Connection request management
-- Match establishment
-- Initial chat channel creation
-
-**Client API (Port 3000):**
-
-```
-GET /search/tutors?subject={subject}&level={level}
-POST /connections/request
-GET /connections/incoming
-POST /connections/{id}/accept
-POST /connections/{id}/reject
-GET /matches
-```
-
-**Internal API (Port 3001):**
-
-```
-POST /internal/search/reindex-tutor
-GET /internal/matches/{studentId}/{tutorId}
-POST /internal/matches/establish
-GET /internal/connections/analytics
-```
-
-**Events Published:**
-
-- MatchEstablished
-- ChatChannelCreated
-- ConnectionRequestSent
-
-**Events Consumed:**
-
-- StudentReadyForPlatform
-- TutorAvailableForMatching
-
-**Database:**
-
-- Elasticsearch for search functionality
-- PostgreSQL for connection requests and matches
-
-### Service 4: Lesson Service (Context 4)
-
-**Responsibilities:**
-
-- Lesson booking and scheduling
-- Video session coordination
-- Real-time chat during lessons
-- File sharing capabilities
-
-**Client API (Port 3000):**
-
-```
-POST /lessons/book
-GET /lessons/{id}/status
-POST /lessons/{id}/join
-GET /lessons/{id}/chat-token
-POST /lessons/{id}/files/upload
-GET /lessons/upcoming
-POST /lessons/{id}/end
-```
-
-**Internal API (Port 3001):**
-
-```
-POST /internal/lessons/confirm-payment
-GET /internal/lessons/{id}/participants
-GET /internal/lessons/analytics-data
-POST /internal/lessons/complete
-```
-
-**Events Published:**
-
-- LessonConfirmed
-- LessonStarted
-- LessonCompleted
-- LessonFileShared
-
-**Events Consumed:**
-
-- MatchEstablished
-- PaymentProcessed
-
-**Database:** PostgreSQL for lesson data, MongoDB for chat messages
-
-### Service 5: Payment Service (Context 4)
-
-**Responsibilities:**
-
-- Payment processing via Stripe
-- Commission calculation (20%)
-- Tutor payout scheduling
-- Transaction audit trail
-
-**Client API (Port 3000):**
-
-```
-POST /payments/process
-GET /payments/{id}/status
-GET /payments/history
-GET /payments/methods
-```
-
-**Internal API (Port 3001):**
-
-```
-POST /internal/payments/release
-POST /internal/payouts/schedule
-GET /internal/payments/commission-report
-POST /internal/payments/refund
-```
-
-**Events Published:**
-
-- PaymentProcessed
-- PaymentReleased
-- TutorPayoutScheduled
-
-**Events Consumed:**
-
-- LessonCompleted
-
-**Database:** PostgreSQL for transaction integrity and audit compliance
-
----
-
-## Real-Time Features
-
-### WebSocket Implementation
-
-**Technology:** Socket.io with Redis adapter for horizontal scaling
-
-**Real-Time Events:**
-
-```javascript
-// Lesson Context
-'lesson:booking-confirmed' - Booking successful
-'lesson:participant-joined' - User joined video session
-'lesson:started' - Lesson began
-'lesson:message-sent' - Chat message during lesson
-'lesson:file-shared' - Resource shared
-'lesson:ended' - Session completed
-
-// Matching Context
-'connection:request-received' - New connection request
-'connection:accepted' - Connection approved
-'match:established' - Successful match
-
-// General
-'notification:new' - Push notification received
-```
-
-### Video Integration (Agora.io)
-
-**Implementation:**
-
-- Token-based authentication
-- Automatic room creation on lesson confirmation
-- Built-in recording for later review
-- Screen sharing capabilities
-- Global CDN for low latency
-
-**Video Session Flow:**
-
-1. Lesson confirmed → Generate Agora token
-2. Both participants join → Start recording
-3. Session active → Real-time chat + file sharing
-4. Lesson ends → Stop recording, save to S3
-
----
-
-## Security & Authentication
-
-### Service-to-Service Authentication
-
-**Method:** AWS IAM Authentication with Signature V4
+- **Port 3000:** Client-facing API (authenticated, rate-limited, CORS-enabled)
+- **Port 3001:** Internal API (VPC-only, trusted, optimized for service-to-service)
 
 **Benefits:**
 
-- No manual credential management
-- ECS task roles handle authentication automatically
+- Simpler than BFF patterns
+- Reduced latency (no extra network hops)
+- Industry standard used by Netflix, Spotify
+- Standard tooling compatibility
+
+### Ports & Adapters (Hexagonal Architecture)
+
+**Domain Layer:** Pure business logic, no infrastructure dependencies
+**Application Layer:** CQRS commands/queries, orchestration
+**Infrastructure Layer:** Database, external services, adapters
+
+**Dependency Direction:** Infrastructure → Application → Domain
+
+### Security & Service Communication
+
+**Service-to-Service:** AWS IAM Authentication with Signature V4
+
+- ECS task roles handle credentials automatically
 - Built-in audit trail via CloudTrail
 - Fine-grained permissions per service
-- Zero credential rotation overhead
 
-**Implementation:**
+**Client Authentication:** AWS Cognito User Pools with JWT tokens
 
-```javascript
-// Example service-to-service call
-const response = await AWS.config.credentials.signRequest({
-  method: "POST",
-  url: "http://tutor-service:3001/internal/tutors/search",
-  body: JSON.stringify(searchParams),
-  headers: {
-    "Content-Type": "application/json",
-    "X-Correlation-ID": correlationId,
-  },
-});
-```
+- Custom attributes for onboarding state tracking
+- Role-based access control (student, tutor, admin)
+- Seamless integration with API Gateway
 
-### Client Authentication
+### Event-Driven Architecture Decisions
 
-**Primary:** AWS Cognito User Pools
+#### Current Implementation: Simple SQS Pattern ✅
 
-- JWT token-based authentication
-- Multi-factor authentication support
-- Social login integration ready
-- Password policies and security
+- **Direct SQS** for non-critical notifications (emails, analytics)
+- **No Outbox Pattern** (yet) - simple approach for startup phase
+- **No Event Store** (yet) - regular PostgreSQL persistence sufficient
 
-**API Security:**
+#### Future Patterns (When Business Justifies Complexity):
 
-- Rate limiting on public APIs
-- Input validation and sanitization
-- CORS policies for web clients
-- Request/response logging for audit
+- **Outbox Pattern** when we have business-critical cross-service transactions (payments)
+- **Event Store** when we need full audit trails (financial transactions, compliance)
+- **Saga Pattern** when we have complex multi-service workflows (lesson booking)
+
+**Decision Framework:**
+
+- **Outbox**: When money involved OR critical cross-service coordination
+- **Event Store**: When regulatory compliance OR dispute resolution needed
+- **Saga**: When complex workflows span 3+ services with compensation logic
+
+#### Lambda Integration Strategy
+
+**Use Lambda for Utility Tasks Only:**
+
+- ✅ **Email processing** (SES integration, template generation)
+- ✅ **Image processing** (profile pictures, document processing)
+- ✅ **Analytics processing** (metrics aggregation, reporting)
+- ✅ **File processing** (document validation, OCR)
+
+**Keep in ECS Microservices:**
+
+- ❌ **Domain logic** and business rules
+- ❌ **Real-time features** (WebSocket connections)
+- ❌ **High-frequency operations** (API endpoints)
 
 ---
 
-## Event-Driven Communication
+## Domain-Driven Design Implementation
 
-### Event Schema Design
+### Base Abstract Classes for Consistency
 
-**Standard Event Structure:**
+```typescript
+// shared/domain/value-object.base.ts
+export abstract class ValueObject<T> {
+  protected readonly value: T;
+  protected constructor(value: T) {
+    this.validate(value);
+    this.value = value;
+  }
+  protected abstract validate(value: T): void;
+  equals(other?: ValueObject<T>): boolean;
+}
 
-```json
-{
-  "eventId": "uuid",
-  "eventType": "StudentReadyForPlatform",
-  "aggregateId": "student-123",
-  "aggregateType": "Student",
-  "eventVersion": "1.0",
-  "timestamp": "2025-09-20T10:30:00Z",
-  "correlationId": "uuid",
-  "causationId": "uuid",
-  "metadata": {
-    "source": "identity-service",
-    "userId": "user-456"
-  },
-  "data": {
-    "studentId": "student-123",
-    "profileComplete": true,
-    "parentConsentReceived": true,
-    "subjectsOfInterest": ["mathematics", "science"]
+// shared/domain/identifier.base.ts
+export abstract class Identifier extends ValueObject<string> {
+  static generate<T extends Identifier>(this: new (value: string) => T): T;
+  static from<T extends Identifier>(this: new (value: string) => T, value: string): T;
+}
+
+// shared/domain/domain-policy.base.ts
+export abstract class DomainPolicy<T> {
+  abstract enforce(input: T): Promise<void>;
+}
+
+// shared/domain/domain-service.base.ts
+export abstract class DomainService {
+  // Common infrastructure for all domain services
+}
+```
+
+### Layered Validation Strategy
+
+**DTO Layer:** Technical format validation and API contract enforcement
+
+```typescript
+export class CreateTutorProfileDto {
+  @IsEmail({}, { message: "Please provide a valid email address" })
+  @Transform(({ value }) => value?.toLowerCase().trim())
+  email: string;
+
+  @Length(20, 2000, { message: "Experience must be 20-2000 characters" })
+  experience: string;
+
+  @Min(5, { message: "Minimum hourly rate is $5" })
+  @Max(500, { message: "Maximum hourly rate is $500" })
+  hourlyRate: number;
+}
+```
+
+**Domain Layer:** Business rules and domain invariants only
+
+```typescript
+export class Email extends ValueObject<string> {
+  protected validate(value: string): void {
+    // Business rule: Email is required
+    if (!value?.trim()) {
+      throw new DomainError("Email is required", "EMAIL_REQUIRED");
+    }
+
+    // Business rule: No disposable email services
+    if (this.isDisposableEmail(value)) {
+      throw new DomainError("Disposable email addresses are not allowed", "EMAIL_DISPOSABLE");
+    }
+
+    // Business rule: Block specific domains
+    if (this.isBlockedDomain(value)) {
+      throw new DomainError("This email domain is not allowed", "EMAIL_DOMAIN_BLOCKED");
+    }
+  }
+
+  // NO email format validation - that's DTO layer responsibility
+}
+```
+
+### Aggregate Design Patterns
+
+**Following DDD Best Practices:**
+
+- Keep aggregates small (3-5 entities max)
+- Single responsibility per aggregate
+- Event-driven state changes
+- Immutable value objects
+- Factory methods for creation and reconstitution
+
+```typescript
+export class TutorProfile extends AggregateRoot {
+  private constructor(
+    private readonly _id: TutorId,
+    private readonly _userId: UserId,
+    private _personalName: PersonalName,
+    private _qualifications: TutorQualifications,
+    private _verificationStatus: TutorVerificationStatus,
+    private _verifiedSubjects: Subject[],
+    private _timestamps: AggregateTimestamps
+  ) { super(); }
+
+  // Factory for NEW entities
+  static create(userId: UserId, personalName: PersonalName, ...): TutorProfile {
+    const profile = new TutorProfile(/* ... */);
+    profile.apply(new TutorProfileCreatedEvent(/* ... */));
+    return profile;
+  }
+
+  // Factory for RECONSTITUTION from database
+  static reconstitute(id: TutorId, userId: UserId, ...): TutorProfile {
+    return new TutorProfile(id, userId, /* ... */);
+  }
+
+  // Business operations with domain events
+  approve(adminId: UserId, verifiedSubjects: Subject[]): void {
+    // Business validation
+    this.validateApprovalEligibility();
+
+    // State change
+    this._verificationStatus = TutorVerificationStatus.APPROVED;
+    this._verifiedSubjects = verifiedSubjects;
+
+    // Domain event
+    this.apply(new TutorApprovedEvent(this._id.value, adminId.value, verifiedSubjects));
   }
 }
 ```
 
-### Event Bus Configuration
+### Repository Pattern with Persistence Interfaces
 
-**AWS EventBridge Custom Bus:**
+```typescript
+// Clean separation: Domain defines what it needs
+export interface TutorProfilePersistence {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  subjects: Subject[];
+  verificationStatus: TutorVerificationStatus;
+  verifiedSubjects: Subject[];
+  hourlyRate: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-- Separate bus for domain events
-- Event replay capability
-- Dead letter queues for failed processing
-- Event archiving for audit compliance
+// Repository handles mapping to database
+export class DrizzleTutorProfileRepository extends TutorProfileRepository {
+  async save(tutor: TutorProfile): Promise<void> {
+    const persistence = tutor.toPersistence();
 
-**Event Routing Rules:**
-
-```json
-{
-  "Rules": [
-    {
-      "Name": "StudentReadyForMatching",
-      "EventPattern": {
-        "source": ["identity-service"],
-        "detail-type": ["StudentReadyForPlatform"]
-      },
-      "Targets": [
-        {
-          "Id": "MatchingService",
-          "Arn": "arn:aws:ecs:region:account:service/matching-service"
-        }
-      ]
-    }
-  ]
+    // Map to database schema (different column names, types, etc.)
+    await this.db.insert(schema.tutorProfiles).values({
+      id: persistence.id,
+      user_id: persistence.userId, // snake_case in DB
+      first_name: persistence.firstName,
+      verification_status: persistence.verificationStatus,
+      hourly_rate_cents: persistence.hourlyRate * 100, // Different format
+      // ... other mappings
+    });
+  }
 }
 ```
 
 ---
 
-## Database Strategy
+## Identity Service - Complete Implementation
 
-### Database per Service Pattern
+### Current Implementation Status: ✅ PRODUCTION READY
 
-Each microservice owns its data with appropriate database technology:
+**Implemented Features:**
 
-**Identity Service:** PostgreSQL
+- ✅ User Account Management (email verification, Cognito integration)
+- ✅ Student Profile Creation (COPPA compliance, parent consent)
+- ✅ Tutor Profile Creation (qualifications, experience validation)
+- ✅ Comprehensive Tutor Verification Flow (6-step process with admin review)
+- ✅ Document Upload & Management (S3 integration, security)
+- ✅ Admin Dashboard (verification management, approval/rejection)
+- ✅ Event-Driven Notifications (SQS integration for emails)
 
-- ACID compliance for user data
-- Strong consistency for authentication
-- Referential integrity for parent-child relationships
+### Student Onboarding Flow
 
-**Tutor Service:** PostgreSQL
+```
+1. Registration → Email Verification → Profile Creation →
+2. (If Minor) Parent Consent → Student Ready for Platform
+```
 
-- Complex relational data (qualifications, experience)
-- Admin workflow state management
-- Audit trail requirements
+**Business Rules Enforced:**
 
-**Matching Service:**
+- COPPA compliance for users under 18
+- Parent email required for minors
+- Grade-age compatibility validation
+- Subject interest validation
 
-- Elasticsearch: Search and ranking algorithms
-- PostgreSQL: Connection requests and established matches
+### Tutor Onboarding Flow (6-Step Process)
 
-**Lesson Service:**
+```
+1. Registration → 2. Email Verification → 3. Profile Creation →
+4. Document Submission → 5. Admin Review → 6. Approval/Rejection
+```
 
-- PostgreSQL: Lesson bookings and scheduling
-- MongoDB: Chat messages (document-based, high write volume)
+**Verification States:**
 
-**Payment Service:** PostgreSQL
+- `PENDING` → `DOCUMENTS_SUBMITTED` → `UNDER_REVIEW`
+- `ADDITIONAL_INFO_REQUIRED` → `APPROVED` → `READY_FOR_PLATFORM`
+- `REJECTED` → `SUSPENDED` (post-approval management)
 
-- Financial data requiring ACID properties
-- Compliance and audit requirements
-- Transaction integrity critical
+**Business Rules Enforced:**
 
-### Data Consistency Strategy
+- Age eligibility (18+ for tutors)
+- Hourly rate bounds ($5-$500)
+- Required documents (ID, education, teaching certificates)
+- Subject-qualification matching
+- Advanced subjects require additional certifications
 
-**Pattern:** Eventual Consistency with Compensating Actions
+### API Endpoints Implemented
 
-**Example:** Lesson Booking Flow
+#### Student Onboarding
 
-1. Payment Service processes payment
-2. Publishes `PaymentProcessed` event
-3. Lesson Service receives event and confirms booking
-4. If lesson confirmation fails, Payment Service receives `BookingFailed` event and processes refund
+```typescript
+POST /onboarding/students/register
+POST /onboarding/students/verify-email
+POST /onboarding/students/complete-profile
+POST /onboarding/students/parent-consent/:id
+```
+
+#### Tutor Onboarding
+
+```typescript
+POST /onboarding/tutors/register
+POST /onboarding/tutors/verify-email
+POST /onboarding/tutors/complete-profile
+POST /onboarding/tutors/submit-documents/:id
+POST /onboarding/tutors/resubmit-documents/:id
+GET  /onboarding/tutors/verification-status/:id
+```
+
+#### Admin Management
+
+```typescript
+GET  /admin/tutors/pending-verification
+GET  /admin/tutors/:id/verification-details
+POST /admin/tutors/:id/start-review
+POST /admin/tutors/:id/approve
+POST /admin/tutors/:id/reject
+POST /admin/tutors/:id/request-additional-info
+POST /admin/tutors/:id/suspend
+```
+
+### Database Schema (PostgreSQL with Drizzle ORM)
+
+```sql
+-- Core Tables
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    role VARCHAR(50) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending_verification',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE student_profiles (
+    id UUID PRIMARY KEY REFERENCES users(id),
+    user_id UUID REFERENCES users(id),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    grade_level VARCHAR(50) NOT NULL,
+    subjects_of_interest JSON NOT NULL,
+    parent_consent_required BOOLEAN DEFAULT FALSE,
+    parent_consent_granted BOOLEAN DEFAULT FALSE,
+    parent_email VARCHAR(255)
+);
+
+CREATE TABLE tutor_profiles (
+    id UUID PRIMARY KEY REFERENCES users(id),
+    user_id UUID REFERENCES users(id),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    subjects JSON NOT NULL,
+    experience TEXT NOT NULL,
+    education TEXT NOT NULL,
+    hourly_rate DECIMAL(10,2) NOT NULL,
+    verification_status VARCHAR(50) DEFAULT 'pending',
+    verified_subjects JSON DEFAULT '[]',
+    submitted_documents JSON DEFAULT '{}',
+    verification_notes JSON DEFAULT '[]'
+);
+```
+
+### Event-Driven Integration
+
+**Domain Events Published:**
+
+```typescript
+// Student Events
+AccountCreated → EmailVerificationSent → AccountActivated
+StudentProfileCreated → MinorStatusDetected → StudentReadyForPlatform
+
+// Tutor Events
+TutorProfileCreated → TutorDocumentsSubmitted → TutorReviewStarted
+TutorApproved → TutorReadyForPlatform
+
+// Admin Events
+TutorRejected → AdditionalInfoRequested → TutorSuspended
+```
+
+**External Integrations:**
+
+- **Email Service** (SQS → Lambda → SES): Verification emails, status notifications
+- **Matching Service** (SQS): Student/Tutor ready notifications
+- **Analytics Service** (SQS): Conversion tracking, funnel analysis
 
 ---
 
-## External Integrations
+## Infrastructure & Deployment
 
-### Payment Processing (Stripe)
+### AWS Architecture
 
-**Integration Points:**
+**Core Services:**
 
-- Customer creation and management
-- Payment method storage
-- One-time payments for lessons
-- Subscription management (future feature)
-- Webhook handling for payment status updates
-- Payout management for tutors
-
-**Security:**
-
-- Stripe Connect for marketplace payments
-- PCI compliance through Stripe
-- Webhook signature verification
-
-### Video Platform (Agora.io)
-
-**Features Utilized:**
-
-- Video calling with recording
-- Screen sharing for lessons
-- Real-time messaging (backup to WebSocket)
-- Global CDN for low latency
-- Token-based security
-
-**Integration Flow:**
-
-1. Lesson confirmed → Generate Agora token
-2. Store token securely with lesson data
-3. Clients retrieve token via authenticated API
-4. Video session managed by Agora infrastructure
-
-### Email Service (AWS SES)
-
-**Use Cases:**
-
-- Email verification during registration
-- Parent consent requests
-- Lesson confirmations and reminders
-- Payment receipts
-- Platform notifications
-
-### File Storage (AWS S3)
-
-**Organization:**
-
-```
-bucket-name/
-├── lesson-files/
-│   ├── {lesson-id}/
-│   │   ├── shared-documents/
-│   │   └── recordings/
-├── user-avatars/
-└── tutor-qualifications/
-```
+- **ECS Fargate** - Serverless containers for microservices
+- **Application Load Balancer** - Dual port routing (3000 client, 3001 internal)
+- **RDS PostgreSQL** - Primary database with read replicas
+- **ElastiCache Redis** - Caching layer and session storage
+- **S3 + CloudFront** - Document storage and CDN
+- **EventBridge + SQS** - Event-driven communication
+- **Lambda** - Utility functions (email, image processing)
+- **Cognito User Pools** - Authentication and user management
 
 **Security:**
 
-- Presigned URLs for secure uploads
-- CloudFront for fast global delivery
-- Lifecycle policies for cost optimization
+- **VPC with private subnets** - Network isolation
+- **ECS task roles** - Service-to-service authentication
+- **AWS Signature V4** - Internal API security
+- **CloudTrail** - Audit logging
+- **WAF** - Web application firewall
+
+### Deployment Strategy
+
+**Infrastructure as Code:** AWS CDK with TypeScript
+
+```typescript
+// Infrastructure stack example
+const cluster = new ecs.Cluster(this, "EdTechCluster", { vpc });
+
+const identityService = new ecs.FargateService(this, "IdentityService", {
+  cluster,
+  taskDefinition: identityTaskDef,
+  desiredCount: 2,
+  assignPublicIp: false,
+});
+
+const loadBalancer = new elbv2.ApplicationLoadBalancer(this, "ALB", {
+  vpc,
+  internetFacing: true,
+});
+
+// Dual port setup
+loadBalancer.addListener("ClientListener", {
+  port: 80,
+  defaultTargetGroups: [clientTargetGroup],
+});
+
+loadBalancer.addListener("InternalListener", {
+  port: 3001,
+  defaultTargetGroups: [internalTargetGroup],
+});
+```
+
+**Container Strategy:**
+
+- Multi-stage Docker builds for optimal image size
+- Health checks for proper load balancer integration
+- Graceful shutdown handling for zero-downtime deployments
+
+**Monitoring & Observability:**
+
+- **CloudWatch** - Metrics, logs, and alerting
+- **X-Ray** - Distributed tracing
+- **Custom metrics** - Business KPIs and performance tracking
+
+---
+
+## Development Patterns & Best Practices
+
+### AI-Assisted Development with Claude Code
+
+**Integration Strategy:**
+
+- **Code generation** for boilerplate (aggregates, commands, DTOs)
+- **Architecture reviews** with AI analysis
+- **Domain modeling** assistance with business requirement analysis
+- **Test generation** for comprehensive coverage
+
+**CLI Workflow:**
+
+```bash
+claude-code generate --type=aggregate --domain=tutor-profile
+claude-code review --file=src/domain/aggregates/tutor-profile.ts
+claude-code test --type=unit --file=tutor-profile.aggregate.ts
+```
+
+### Code Quality Standards
+
+**TypeScript Configuration:**
+
+- Strict mode enabled
+- Path mapping for clean imports
+- Consistent formatting with Prettier
+- ESLint with custom rules for DDD patterns
+
+**Testing Strategy:**
+
+- **Unit tests** for domain logic (aggregates, value objects, policies)
+- **Integration tests** for command/query handlers
+- **E2E tests** for critical user journeys
+- **Contract tests** for service boundaries
+
+**Error Handling:**
+
+```typescript
+// Structured domain errors
+export class DomainError extends Error {
+  constructor(message: string, public readonly code: string, public readonly field?: string) {
+    super(message);
+    this.name = "DomainError";
+  }
+}
+
+// Global exception filter
+@Catch(DomainError)
+export class DomainErrorFilter implements ExceptionFilter {
+  catch(exception: DomainError, host: ArgumentsHost) {
+    const response = host.switchToHttp().getResponse();
+    response.status(400).json({
+      error: "Domain Validation Error",
+      message: exception.message,
+      code: exception.code,
+      field: exception.field,
+    });
+  }
+}
+```
+
+### Performance Optimization
+
+**Caching Strategy:**
+
+- **Redis** for session storage and frequently accessed data
+- **Application-level caching** for static data (subjects, grade levels)
+- **Database query optimization** with proper indexing
+
+**Monitoring:**
+
+```typescript
+// Performance metrics service
+@Injectable()
+export class PerformanceMetricsService {
+  async recordCommandExecution(commandName: string, durationMs: number, status: "success" | "error"): Promise<void> {
+    await this.cloudWatch.send(
+      new PutMetricDataCommand({
+        Namespace: "EdTech/Commands",
+        MetricData: [
+          {
+            MetricName: `${commandName}.Duration`,
+            Value: durationMs,
+            Unit: "Milliseconds",
+            Dimensions: [{ Name: "Status", Value: status }],
+          },
+        ],
+      })
+    );
+  }
+}
+```
 
 ---
 
 ## Implementation Roadmap
 
-### Phase 1: Foundation (Weeks 1-8)
+### Phase 1: Foundation ✅ COMPLETED
 
-**Milestone:** Basic platform functionality
+**Timeline:** 8 weeks
+**Status:** Production Ready
 
-**Sprint 1-2: Infrastructure Setup**
+**Delivered:**
 
-- AWS account setup and VPC configuration
-- ECS cluster and service definitions
-- RDS instances for each service
-- EventBridge custom bus setup
-- Basic CI/CD pipeline with CDK
+- ✅ Identity Service with student and tutor onboarding
+- ✅ Comprehensive tutor verification flow
+- ✅ Admin dashboard for tutor management
+- ✅ AWS infrastructure setup
+- ✅ Cognito authentication integration
+- ✅ Document upload and management
+- ✅ Event-driven notifications
 
-**Sprint 3-4: Identity Service**
+### Phase 2: Matching Service 🚧 IN PROGRESS
 
-- User registration and email verification
-- Student profile management
-- COPPA compliance workflow
-- AWS Cognito integration
-- Basic authentication middleware
+**Timeline:** 6 weeks
+**Status:** Design Complete, Implementation Starting
 
-**Sprint 5-6: Tutor Service**
+**Scope:**
 
-- Tutor profile creation and management
-- Qualification submission
-- Admin review dashboard (basic)
-- Integration with Identity Service events
+- Student-tutor matching algorithm
+- Preference management (subjects, availability, location)
+- Match quality scoring
+- Communication channel setup
+- Match management (accept/decline/reschedule)
 
-**Sprint 7-8: Basic Matching**
+**Technical Implementation:**
 
-- Simple tutor search (no ML ranking yet)
-- Connection request workflow
-- Basic chat channel creation
-- Integration testing across services
+- Matching algorithm microservice
+- Real-time notifications (WebSocket)
+- Complex event flows with eventual consistency
+- Geographic and schedule-based matching
 
-### Phase 2: Core Product (Weeks 9-16)
+### Phase 3: Lesson Management 🔮 FUTURE
 
-**Milestone:** End-to-end lesson delivery
+**Timeline:** 8 weeks
 
-**Sprint 9-10: Lesson Booking**
+**Scope:**
 
-- Lesson scheduling interface
-- Time slot management
-- Basic payment integration with Stripe
-- Lesson confirmation workflow
+- Lesson booking and scheduling
+- Calendar integration
+- Video call integration (Agora.io)
+- Lesson state management
+- Recording and playback
 
-**Sprint 11-12: Video Integration**
+**Technical Challenges:**
 
-- Agora.io integration
-- Video room creation and management
-- Recording functionality
-- File sharing during lessons
+- Real-time communication
+- Payment processing integration
+- Complex saga workflows
+- Video streaming infrastructure
 
-**Sprint 13-14: Real-time Features**
+### Phase 4: Payment & Financial 🔮 FUTURE
 
-- WebSocket implementation for chat
-- Real-time notifications
-- Live lesson status updates
-- Connection management
+**Timeline:** 10 weeks
 
-**Sprint 15-16: Payment Processing**
+**Scope:**
 
-- Complete Stripe integration
-- Commission calculation and handling
-- Tutor payout system
-- Payment reconciliation
+- Payment processing (Stripe integration)
+- Tutor payout system (20% commission)
+- Invoice generation
+- Financial reporting and analytics
+- Refund processing
 
-### Phase 3: Platform Optimization (Weeks 17-24)
+**Technical Requirements:**
 
-**Milestone:** Production-ready platform
+- **Outbox pattern** for reliable financial transactions
+- **Event store** for full audit trail
+- **Saga pattern** for complex payment workflows
+- PCI compliance and security
 
-**Sprint 17-18: Search Enhancement**
+### Phase 5: Advanced Features 🔮 FUTURE
 
-- Elasticsearch integration
-- ML-powered ranking algorithms
-- Advanced filtering capabilities
-- Search analytics
+**Timeline:** 12 weeks
 
-**Sprint 19-20: Mobile Optimization**
+**Scope:**
 
-- API optimizations for mobile
-- Offline capability preparation
-- Push notification system
-- Mobile-specific video optimizations
+- Advanced analytics and reporting
+- Machine learning recommendations
+- Mobile app (React Native)
+- Advanced search and filtering
+- Gamification and achievements
 
-**Sprint 21-22: Analytics & Monitoring**
+## Current Architecture Benefits
 
-- Comprehensive logging and monitoring
-- Business analytics dashboard
-- Performance optimization
-- Error tracking and alerting
+### ✅ **Startup-Friendly Approach**
 
-**Sprint 23-24: Security & Compliance**
+- Start simple with proven patterns
+- Add complexity only when business justifies it
+- Rapid iteration and feature delivery
+- Cost-effective infrastructure scaling
 
-- Security audit and penetration testing
-- Data privacy compliance (GDPR/COPPA)
-- Performance testing and optimization
-- Production deployment preparation
+### ✅ **Production-Ready Foundation**
 
-### Phase 4: Advanced Features (Post-Launch)
+- Comprehensive error handling and validation
+- Security best practices implemented
+- Monitoring and observability built-in
+- Scalable architecture patterns
 
-**Roadmap for future development:**
+### ✅ **Team Productivity**
 
-- AI-powered tutor recommendations
-- Advanced learning analytics
-- Mobile applications (iOS/Android)
-- Multi-language support
-- Advanced payment features (subscriptions, packages)
-- Parent/admin dashboards
-- Learning path recommendations
+- Consistent patterns across all services
+- AI-assisted development workflow
+- Clear separation of concerns
+- Comprehensive documentation
 
----
+### ✅ **Business Value Delivery**
 
-## Technology Stack Summary
+- Complete student and tutor onboarding
+- Quality control through verification
+- COPPA compliance for legal requirements
+- Admin tools for platform management
 
-### Backend Services
-
-- **Framework:** NestJS with TypeScript
-- **Runtime:** Node.js 18 LTS
-- **Package Manager:** npm/yarn
-- **API Documentation:** Swagger/OpenAPI
-
-### Databases
-
-- **Primary:** PostgreSQL 14+ (AWS RDS)
-- **Search:** Elasticsearch 7.x (AWS OpenSearch)
-- **Cache:** Redis 6+ (AWS ElastiCache)
-- **Document Store:** MongoDB 5+ (for chat messages)
-
-### Infrastructure
-
-- **Cloud Provider:** AWS
-- **Container Orchestration:** ECS Fargate
-- **Load Balancing:** Application Load Balancer
-- **CDN:** CloudFront
-- **File Storage:** S3
-- **Monitoring:** CloudWatch + X-Ray
-
-### External Services
-
-- **Payment Processing:** Stripe
-- **Video Platform:** Agora.io
-- **Email Service:** AWS SES
-- **Authentication:** AWS Cognito
-
-### Development Tools
-
-- **Infrastructure as Code:** AWS CDK
-- **API Testing:** Postman/Jest
-- **Code Quality:** ESLint, Prettier
-- **Version Control:** Git with conventional commits
-
----
-
-## Conclusion
-
-This architecture provides a solid foundation for a scalable edtech marketplace platform. The event-driven microservices architecture allows for:
-
-- **Independent development and deployment** of each bounded context
-- **Horizontal scaling** based on demand
-- **Technology diversity** where appropriate for each service
-- **Clear separation of concerns** following domain-driven design principles
-- **Battle-tested patterns** used by successful companies at scale
-
-The domain model, derived from comprehensive event storming sessions, ensures that the technical implementation aligns closely with business requirements and user needs. The architecture is designed to support rapid iteration during the startup phase while providing a solid foundation for future growth and feature expansion.
-
-**Next Steps:**
-
-1. Begin implementation with Phase 1 foundation work
-2. Set up development environment and CI/CD pipeline
-3. Implement Identity Service as the first microservice
-4. Establish event-driven communication patterns
-5. Build and iterate based on user feedback
-
-This comprehensive architecture balances simplicity for rapid development with the scalability requirements of a growing edtech platform.
+This architecture provides a solid foundation for scaling from startup to enterprise while maintaining code quality, security, and developer productivity. The modular design allows for independent service evolution and team scaling as the business grows.

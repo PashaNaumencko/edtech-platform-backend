@@ -18,24 +18,66 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@edtech/types": ["libs/types/src"],
-      "@edtech/types/*": ["libs/types/src/*"],
-      "@edtech/auth": ["libs/auth/src"],
-      "@edtech/auth/*": ["libs/auth/src/*"],
-      "@edtech/security": ["libs/security/src"],
-      "@edtech/security/*": ["libs/security/src/*"],
-      "@edtech/config": ["libs/config/src"],
-      "@edtech/config/*": ["libs/config/src/*"],
-      "@edtech/service-auth": ["libs/service-auth/src"],
-      "@edtech/service-auth/*": ["libs/service-auth/src/*"],
-      "@edtech/cache": ["libs/cache/src"],
-      "@edtech/cache/*": ["libs/cache/src/*"],
-      "@edtech/s3": ["libs/s3/src"],
-      "@edtech/s3/*": ["libs/s3/src/*"],
-      "@edtech/constants": ["libs/constants/src"],
-      "@edtech/constants/*": ["libs/constants/src/*"],
-      "@edtech/drizzle": ["libs/drizzle/src"],
-      "@edtech/drizzle/*": ["libs/drizzle/src/*"]
+      "@edtech-platform/shared": [
+        "libs/shared/src"
+      ],
+      "@edtech-platform/shared/*": [
+        "libs/shared/src/*"
+      ],
+      "@edtech/auth": [
+        "libs/auth/src"
+      ],
+      "@edtech/auth/*": [
+        "libs/auth/src/*"
+      ],
+      "@edtech/cache": [
+        "libs/cache/src"
+      ],
+      "@edtech/cache/*": [
+        "libs/cache/src/*"
+      ],
+      "@edtech/config": [
+        "libs/config/src"
+      ],
+      "@edtech/config/*": [
+        "libs/config/src/*"
+      ],
+      "@edtech/constants": [
+        "libs/constants/src"
+      ],
+      "@edtech/constants/*": [
+        "libs/constants/src/*"
+      ],
+      "@edtech/drizzle": [
+        "libs/drizzle/src"
+      ],
+      "@edtech/drizzle/*": [
+        "libs/drizzle/src/*"
+      ],
+      "@edtech/s3": [
+        "libs/s3/src"
+      ],
+      "@edtech/s3/*": [
+        "libs/s3/src/*"
+      ],
+      "@edtech/security": [
+        "libs/security/src"
+      ],
+      "@edtech/security/*": [
+        "libs/security/src/*"
+      ],
+      "@edtech/service-auth": [
+        "libs/service-auth/src"
+      ],
+      "@edtech/service-auth/*": [
+        "libs/service-auth/src/*"
+      ],
+      "@edtech/types": [
+        "libs/types/src"
+      ],
+      "@edtech/types/*": [
+        "libs/types/src/*"
+      ]
     }
   }
 }
