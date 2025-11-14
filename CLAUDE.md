@@ -2,10 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this EdTech platform repository.
 
-## 🎯 Current Focus: Complete Architecture Implementation
+## 🎯 Current Focus: Service Implementation from Scratch
 
-**Primary Goal**: Implement the new comprehensive microservices architecture
-**Status**: Phase 1 - Project cleanup and service restructuring completed
+**Primary Goal**: Build three core microservices (Identity, Tutor, Admin) following step-by-step implementation guides
+**Status**: Codebase cleaned and prepared - Ready for implementation
 
 ## 📋 Essential Commands
 
@@ -23,9 +23,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - **Lint and fix**: `pnpm run lint` (fixes ESLint errors)
 - **Lint check**: `pnpm run lint:check` (checks only)
 
-### Database Operations
+### Database Operations (After Implementation)
 - Run all migrations: `pnpm run migrate:all`
-- Service-specific: `pnpm run drizzle:identity:migrate`, `pnpm run drizzle:user:migrate`, `pnpm run drizzle:tutor:migrate`, `pnpm run drizzle:matching:migrate`, `pnpm run drizzle:lesson:migrate`, `pnpm run drizzle:payment:migrate`
+- Service-specific migrations:
+  - `pnpm run drizzle:identity:generate` - Generate migration
+  - `pnpm run drizzle:identity:migrate` - Apply migration
+  - `pnpm run drizzle:identity:studio` - Open Drizzle Studio GUI
+- Replace `identity` with `tutor` or `admin` for other services
 
 ### API Development
 - Start services with dual ports (3000/3001) for client and internal APIs
@@ -34,130 +38,175 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 - Start services: `pnpm run docker:up`
 - Stop services: `pnpm run docker:down`
 
-## 🏗️ New Microservices Architecture
+## 🏗️ Microservices Architecture
 
-### Core Services (Based on Domain Contexts)
-1. **identity-service** (Context 1) - User registration, email verification, COPPA compliance
-2. **tutor-service** (Context 2) - Tutor onboarding, verification, qualification management
-3. **matching-service** (Context 3) - Smart search, connection requests, match establishment
-4. **lesson-service** (Context 4) - Lesson booking, video sessions, file sharing
-5. **payment-service** (Context 4) - Payment processing, commission calculation, payouts
+### Core Services (To Be Implemented)
+1. **identity-service** (Ports 3000/3001) - User registration, authentication, email verification, COPPA compliance
+2. **tutor-service** (Ports 3002/3003) - Tutor profiles, document verification, qualification management
+3. **admin-service** (Ports 3004/3005) - Platform administration, tutor approval, user management
 
-### Shared Libraries
-- `@edtech/auth` - AWS Cognito integration
-- `@edtech/types` - Shared TypeScript types
+### Future Services (Planned)
+4. **matching-service** - Smart search, connection requests, match establishment
+5. **communication-service** - Real-time chat, video sessions
+6. **booking-service** - Lesson scheduling
+7. **payment-service** - Payment processing, commission calculation, payouts
+
+### Shared Libraries (Already Available)
+- `@edtech/nestjs-drizzle` - Zero-abstraction Drizzle ORM integration
+- `@edtech/shared-kernel` - Domain primitives (ValueObject, Entity, AggregateRoot, DomainError)
+- `@edtech/config` - SSM Parameter Store integration
+- `@edtech/auth` - AWS Cognito authentication
+- `@edtech/s3` - S3 file upload/download
 - `@edtech/service-auth` - Inter-service authentication
+- `@edtech/types` - Shared TypeScript types
 
 ### Technology Stack
-- **Framework**: NestJS with TypeScript
-- **Database**: PostgreSQL (all services)
-- **API**: GraphQL Federation
+- **Framework**: NestJS 11 with TypeScript 5.7
+- **Database**: PostgreSQL (one database per service)
+- **ORM**: Drizzle ORM (type-safe SQL)
+- **API**: REST (dual-port pattern: public + internal)
 - **Authentication**: AWS Cognito
-- **Events**: AWS EventBridge
-- **Payments**: Stripe integration
-- **Video**: Twilio Video API
-- **Deployment**: AWS Fargate
+- **Events**: AWS EventBridge + NestJS CQRS
+- **Payments**: Stripe integration (planned)
+- **Video**: Agora.io or Twilio (planned)
+- **Deployment**: AWS ECS Fargate + Terraform
 
 ## 📁 Service Structure (Standard Pattern)
 
+**Clean Architecture + Domain-Driven Design**
+
 ```
 apps/[service-name]/src/
-├── domain/                 # Business entities and rules
-│   ├── entities/          # Domain entities
-│   ├── value-objects/     # Value objects
-│   ├── events/            # Domain events
-│   └── services/          # Domain services
-├── application/           # Business use cases
-│   ├── use-cases/         # Business operations
-│   ├── dto/               # Data transfer objects
-│   └── event-handlers/    # Event handlers
-├── infrastructure/        # External integrations
-│   ├── persistence/       # Database repositories
-│   └── event-bridge/      # Event publishing
-├── presentation/          # API layer
-│   ├── http/              # REST controllers
-│   └── graphql/           # GraphQL resolvers
-├── config/                # Service configuration
-└── main.ts                # Application entry
+├── domain/                    # Pure business logic (no dependencies)
+│   ├── aggregates/           # Aggregate roots (consistency boundaries)
+│   ├── entities/             # Entities within aggregates
+│   ├── value-objects/        # Immutable, validated data
+│   ├── events/               # Domain events
+│   ├── repositories/         # Repository interfaces (no implementation)
+│   ├── services/             # Domain services (stateless logic)
+│   └── exceptions/           # Domain-specific exceptions
+│
+├── application/              # Use cases (orchestration)
+│   ├── commands/             # Write operations (CQRS)
+│   ├── queries/              # Read operations (CQRS)
+│   ├── event-handlers/       # React to domain/integration events
+│   ├── dtos/                 # Data transfer objects
+│   └── interfaces/           # Application interfaces
+│
+├── infrastructure/           # External concerns
+│   ├── persistence/drizzle/  # Database schemas, repositories, mappers
+│   ├── messaging/            # EventBridge publisher
+│   ├── external-services/    # Cognito, S3 adapters
+│   └── config/               # Configuration services
+│
+├── presentation/             # API layer
+│   └── http/                 # REST controllers
+│       ├── controllers/
+│       │   ├── public/       # Port 3000, 3002, 3004 (external clients)
+│       │   └── internal/     # Port 3001, 3003, 3005 (service-to-service)
+│       ├── dtos/             # Request/response DTOs
+│       ├── guards/           # Authentication/authorization
+│       ├── interceptors/     # Request/response transformation
+│       └── filters/          # Exception handling
+│
+├── [service-name].module.ts  # Root module
+└── main.ts                    # Dual-port application entry
 ```
 
 ## 🔧 Development Workflow
 
 ### 1. Before Starting Work
-- Read [MVP_IMPLEMENTATION_PLAN.md](MVP_IMPLEMENTATION_PLAN.md) for current priorities
-- Check current phase in [docs/development/implementation-phases.md](docs/development/implementation-phases.md)
-- Use existing services as templates (especially user-service)
+- **Read implementation guide**: [docs/implementation-plans/01-IDENTITY-SERVICE.md](docs/implementation-plans/01-IDENTITY-SERVICE.md)
+- **Review architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **Understand structure**: [docs/SERVICE_STRUCTURE.md](docs/SERVICE_STRUCTURE.md)
+- **Check patterns**: [docs/CQRS_EVENT_SOURCING.md](docs/CQRS_EVENT_SOURCING.md)
 
 ### 2. When Implementing New Service
-- Follow [docs/development/service-template.md](docs/development/service-template.md)
-- Copy structure from user-service as starting point
-- Focus on MVP features only - no advanced features
+- **Start with domain layer** - Pure business logic, no framework dependencies
+- **Follow the guide** - Step-by-step implementation in `docs/implementation-plans/`
+- **Use shared libraries** - `@edtech/shared-kernel`, `@edtech/nestjs-drizzle`, etc.
+- **Focus on core features** - Build incrementally, test as you go
 
-### 3. GraphQL Integration (Required)
-- Every service must have GraphQL federation support
-- Follow [docs/development/graphql-federation.md](docs/development/graphql-federation.md)
-- Test integration with federation gateway
+### 3. Implementation Order (Per Service)
+1. **Domain Layer** - Value objects, aggregates, events, repository interfaces
+2. **Infrastructure Layer** - Database schemas, repositories, AWS adapters
+3. **Application Layer** - Commands, queries, event handlers
+4. **Presentation Layer** - REST controllers (public + internal)
+5. **Testing** - Unit, integration, E2E tests
+6. **Deployment** - Docker, Terraform, AWS
 
 ### 4. Before Committing
 - **MUST run**: `pnpm run lint` to fix ESLint errors
-- Ensure all TypeScript compilation passes
-- Test core functionality manually
+- **Type check**: `pnpm run build:check` - Ensure TypeScript compiles
+- **Run tests**: `pnpm test` - All tests must pass
+- **Manual test**: Test API endpoints with curl/Postman
 
-## 🎯 MVP Development Guidelines
+## 🎯 Development Guidelines
 
-### DO (MVP Focused)
-- ✅ Copy patterns from user-service
-- ✅ Keep domain logic simple and working
-- ✅ Use PostgreSQL for all databases
-- ✅ Focus on core user journeys
-- ✅ Use existing AWS services integration patterns
-- ✅ Test manually through GraphQL playground
+### DO (Best Practices)
+- ✅ **Start with domain layer** - Pure business logic first
+- ✅ **Follow implementation guides** - Step-by-step in `docs/implementation-plans/`
+- ✅ **Use shared libraries** - Don't reinvent (`@edtech/shared-kernel`, `@edtech/nestjs-drizzle`)
+- ✅ **Write tests as you go** - Unit tests for domain, integration for repos
+- ✅ **Use Drizzle ORM** - Type-safe SQL queries
+- ✅ **Follow CQRS** - Separate commands (write) from queries (read)
+- ✅ **Dual-port pattern** - Public API (3000+) and Internal API (3001+)
 
-### DON'T (Avoid Over-Engineering)
-- ❌ Add complex domain patterns not in user-service
-- ❌ Create new infrastructure patterns
-- ❌ Add features not in MVP scope
-- ❌ Optimize prematurely
-- ❌ Add complex caching or performance features
-- ❌ Create comprehensive test suites (manual testing OK for MVP)
+### DON'T (Avoid These)
+- ❌ **Don't skip domain layer** - It's the foundation
+- ❌ **Don't mix layers** - Keep domain pure (no DB, no HTTP)
+- ❌ **Don't create files unnecessarily** - Only what's needed for the task
+- ❌ **Don't proactively create docs** - Unless explicitly requested
+- ❌ **Don't optimize prematurely** - Make it work first
+- ❌ **Don't skip tests** - 80%+ coverage for domain logic
 
 ## 📚 Key Documentation
 
-### Implementation Guides
-- **[MVP Implementation Plan](MVP_IMPLEMENTATION_PLAN.md)** - Complete roadmap
-- **[Service Template](docs/development/service-template.md)** - How to create new services
-- **[GraphQL Federation](docs/development/graphql-federation.md)** - GraphQL setup
+### 📖 Implementation Guides (START HERE)
+- **[Identity Service Guide](docs/implementation-plans/01-IDENTITY-SERVICE.md)** - Complete step-by-step implementation
+- **[Infrastructure/Terraform Guide](docs/implementation-plans/04-INFRASTRUCTURE-TERRAFORM.md)** - AWS deployment with Terraform
+- **[Getting Started](GETTING_STARTED.md)** - Project overview and quick start
 
-### Current Status
-- **[Implementation Phases](docs/development/implementation-phases.md)** - Track current progress
-- **[User Service](docs/services/user-service.md)** - Reference implementation
+### 🏗️ Architecture Documentation
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design with diagrams
+- **[Service Structure](docs/SERVICE_STRUCTURE.md)** - Code organization patterns
+- **[ADR - Revised](docs/ADR-REVISED.md)** - All architecture decisions
+
+### 🛠️ Technical Guides
+- **[Development Workflow](docs/DEVELOPMENT.md)** - Daily development practices
+- **[CQRS & Event Sourcing](docs/CQRS_EVENT_SOURCING.md)** - CQRS patterns
+- **[Drizzle NestJS Module](docs/DRIZZLE_NESTJS_MODULE.md)** - ORM integration
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - REST API reference
+- **[Testing Guide](docs/TESTING.md)** - Testing strategies
+
+### 🚀 Operations
+- **[Deployment](docs/DEPLOYMENT.md)** - CI/CD and deployment procedures
+- **[Infrastructure](docs/INFRASTRUCTURE.md)** - Terraform modules
+- **[Cost Management](docs/COST_MANAGEMENT.md)** - AWS free tier optimization
+
+### 📑 Complete Index
+- **[Documentation Index](docs/README.md)** - Navigate all documentation
 
 ## 🚨 Important Notes
 
-### ESLint Errors Will Block Commits
-- Husky pre-commit hook runs `lint-staged`
-- Any ESLint errors will prevent commits
-- **Always run** `pnpm run lint` before committing
+### Code Quality Requirements
+- **ESLint**: Run `pnpm run lint` before every commit (fixes errors automatically)
+- **TypeScript**: Run `pnpm run build:check` - Must compile with no errors
+- **Tests**: Aim for 80%+ coverage on domain logic
+- **Pre-commit hooks**: Configured via Husky (runs lint-staged)
 
-### MVP Timeline is Critical
-- We have 4 weeks to build working MVP
-- Focus on getting core features working
-- Polish and optimization come after MVP
+### Implementation Priority
 
-### Use Existing Patterns
-- Don't reinvent - copy what works from user-service
-- GraphQL federation pattern is established
-- Domain layer patterns are proven
+**Current Phase: Service Implementation**
+1. ✅ **Codebase cleaned** - All pre-created logic removed
+2. ✅ **Documentation complete** - Step-by-step guides ready
+3. 🔜 **Identity Service** - Implement following the guide
+4. 🔜 **Tutor Service** - Implement after Identity
+5. 🔜 **Admin Service** - Implement after Tutor
+6. 🔜 **Infrastructure** - Deploy to AWS with Terraform
 
-## 🔄 Current Development Priority
-
-**Phase 1: Complete User Service GraphQL Integration**
-1. Connect User Service to Federation Gateway
-2. Test end-to-end GraphQL queries  
-3. Fix any integration issues
-4. Begin Tutor Matching Service
-
-**Next**: Follow [MVP_IMPLEMENTATION_PLAN.md](MVP_IMPLEMENTATION_PLAN.md) for detailed steps.
+**Recommended Starting Point:**
+Read [docs/implementation-plans/01-IDENTITY-SERVICE.md](docs/implementation-plans/01-IDENTITY-SERVICE.md) and start implementing from Phase 1.
 
 ## Important Development Guidelines
 
@@ -188,85 +237,69 @@ apps/[service-name]/src/
 - **Drizzle ORM** for PostgreSQL with excellent TypeScript integration
 - **Use Case Services** instead of separate command/query handlers
 
-### Simplified Domain Layer Components
-Using NestJS CQRS as the foundation:
-- **Entities**: Core domain objects with identity
-- **Value Objects**: Immutable objects defined by their values  
-- **Aggregate Roots**: Entities that enforce consistency (extends NestJS CQRS AggregateRoot)
-- **Domain Services**: Complex business logic that doesn't belong to entities
-- **Domain Events**: Events emitted by aggregates (using NestJS CQRS events)
+### Domain-Driven Design (DDD) Principles
 
-### Service Development Structure
-Follow this simplified structure for all services:
-```
-apps/[service-name]/src/
-├── domain/              # Core business logic
-│   ├── entities/        # Domain entities
-│   ├── value-objects/   # Immutable value objects
-│   ├── aggregates/      # Aggregate roots (NestJS CQRS)
-│   ├── services/        # Domain services
-│   └── events/          # Domain events
-├── application/         # Application logic
-│   ├── use-cases/       # Use case services (replaces commands/queries)
-│   ├── dtos/            # Data transfer objects
-│   ├── event-handlers/  # Domain event handlers
-│   └── interfaces/      # Repository interfaces
-├── infrastructure/      # External concerns
-│   ├── persistence/     # Database (Drizzle ORM)
-│   ├── graphql/        # GraphQL federation
-│   ├── http/           # REST controllers
-│   └── events/         # EventBridge integration
-└── main.ts             # Application entry point
-```
+**Domain Layer Components:**
+- **Aggregates**: Consistency boundaries (e.g., `UserAccount`, `TutorProfile`)
+- **Entities**: Objects with identity
+- **Value Objects**: Immutable, self-validating (e.g., `Email`, `PersonalName`)
+- **Domain Events**: State changes (e.g., `UserCreatedEvent`)
+- **Repository Interfaces**: Persistence contracts (no implementation)
+- **Domain Services**: Complex logic that doesn't belong to a single entity
 
-### Development Patterns & Examples
+**Key Rules:**
+- Domain layer has NO external dependencies (no NestJS, no Drizzle, no HTTP)
+- All business rules live in the domain layer
+- Domain objects are pure TypeScript classes
+- Testable without mocks
 
-#### Use Case Service Pattern:
-```typescript
-@Injectable()
-export class CreateUserUseCase {
-  constructor(
-    private readonly userRepository: UserRepositoryInterface,
-    private readonly eventBus: EventBus
-  ) {}
+### CQRS Pattern (Command Query Responsibility Segregation)
 
-  async execute(dto: CreateUserDto): Promise<UserDto> {
-    const user = User.create(dto);
-    await this.userRepository.save(user);
-    user.commit(); // Publishes events via NestJS CQRS
-    return this.mapToDto(user);
-  }
-}
-```
+**Commands (Write Operations):**
+- Change state
+- Return minimal data (usually just ID)
+- Example: `CreateUserCommand`, `VerifyEmailCommand`
 
-#### Aggregate Root with Events:
-```typescript
-export class User extends AggregateRoot {
-  static create(data: CreateUserData): User {
-    const user = new User(data);
-    user.apply(new UserCreatedEvent(user.id, user.email));
-    return user;
-  }
-}
-```
+**Queries (Read Operations):**
+- Read-only, no side effects
+- Return DTOs
+- Example: `GetUserQuery`, `GetUserByEmailQuery`
 
-#### Infrastructure Mapping with mergeObject:
-```typescript
-async findById(id: string): Promise<User | null> {
-  const userData = await this.db.select().from(users).where(eq(users.id, id));
-  return userData ? User.fromPersistence(
-    mergeObject(userData, { skills: JSON.parse(userData.skills || '[]') })
-  ) : null;
-}
-```
+**Event Handlers:**
+- React to domain events
+- Asynchronous
+- Side effects (send email, publish to EventBridge)
+- Example: `UserCreatedHandler`
 
-### Key Technologies
-- **ORM**: Drizzle ORM for PostgreSQL with excellent TypeScript support
-- **Authentication**: AWS Cognito with social providers (Google, Facebook, Apple)
-- **Databases**: PostgreSQL (User, Payment, Reviews), DynamoDB (Content, Chat), Neo4j/Neptune (Tutor Matching)
-- **GraphQL**: Hybrid AppSync (public) + Apollo Federation (internal)
-- **Real-time**: AWS AppSync GraphQL subscriptions
-- **Payments**: Stripe Connect with 20% platform commission
-- **Events**: AWS EventBridge + NestJS CQRS for domain events
-- **Development**: Real AWS services (no LocalStack)
-- **AI Integration**: AWS Bedrock (planned future enhancement)
+### Code Examples
+
+See implementation guides for complete examples:
+- [Identity Service Guide](docs/implementation-plans/01-IDENTITY-SERVICE.md) - Full implementation with examples
+- [Service Structure Guide](docs/SERVICE_STRUCTURE.md) - Code organization patterns
+- [CQRS Guide](docs/CQRS_EVENT_SOURCING.md) - CQRS implementation details
+
+### Technology Stack Details
+
+**Core:**
+- **Framework**: NestJS 11 (TypeScript framework)
+- **Language**: TypeScript 5.7 (strict mode)
+- **Package Manager**: pnpm (fast, disk-efficient)
+
+**Database:**
+- **Primary**: PostgreSQL 14+ (one database per service)
+- **ORM**: Drizzle ORM (type-safe, 7KB, zero runtime overhead)
+- **Migrations**: Drizzle Kit (SQL migrations)
+
+**AWS Services:**
+- **Auth**: AWS Cognito (social providers: Google, Facebook, Apple)
+- **Storage**: S3 (documents, images)
+- **Events**: EventBridge (cross-service communication)
+- **Secrets**: SSM Parameter Store (free tier)
+- **Compute**: ECS Fargate (container orchestration)
+- **Database**: RDS PostgreSQL (managed database)
+
+**Planned Integrations:**
+- **Payments**: Stripe Connect (20% commission)
+- **Video**: Agora.io or Twilio
+- **Search**: Algolia (tutor search)
+- **AI**: AWS Bedrock (future enhancement)

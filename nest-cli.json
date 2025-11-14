@@ -10,24 +10,6 @@
   "monorepo": true,
   "root": ".",
   "projects": {
-    "ai-service": {
-      "type": "application",
-      "root": "apps/ai-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/ai-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/ai-service/tsconfig.app.json"
-      }
-    },
-    "analytics-service": {
-      "type": "application",
-      "root": "apps/analytics-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/analytics-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/analytics-service/tsconfig.app.json"
-      }
-    },
     "auth": {
       "type": "library",
       "root": "libs/auth",
@@ -44,15 +26,6 @@
       "sourceRoot": "libs/cache/src",
       "compilerOptions": {
         "tsConfigPath": "libs/cache/tsconfig.lib.json"
-      }
-    },
-    "communication-service": {
-      "type": "application",
-      "root": "apps/communication-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/communication-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/communication-service/tsconfig.app.json"
       }
     },
     "config": {
@@ -73,58 +46,13 @@
         "tsConfigPath": "libs/constants/tsconfig.lib.json"
       }
     },
-    "content-service": {
-      "type": "application",
-      "root": "apps/content-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/content-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/content-service/tsconfig.app.json"
-      }
-    },
-    "drizzle": {
+    "nestjs-drizzle": {
       "type": "library",
-      "root": "libs/drizzle",
+      "root": "libs/nestjs-drizzle",
       "entryFile": "index",
-      "sourceRoot": "libs/drizzle/src",
+      "sourceRoot": "libs/nestjs-drizzle/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/drizzle/tsconfig.lib.json"
-      }
-    },
-    "learning-service": {
-      "type": "application",
-      "root": "apps/learning-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/learning-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/learning-service/tsconfig.app.json"
-      }
-    },
-    "notification-service": {
-      "type": "application",
-      "root": "apps/notification-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/notification-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/notification-service/tsconfig.app.json"
-      }
-    },
-    "payment-service": {
-      "type": "application",
-      "root": "apps/payment-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/payment-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/payment-service/tsconfig.app.json"
-      }
-    },
-    "reviews-service": {
-      "type": "application",
-      "root": "apps/reviews-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/reviews-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/reviews-service/tsconfig.app.json"
+        "tsConfigPath": "libs/nestjs-drizzle/tsconfig.lib.json"
       }
     },
     "s3": {
@@ -136,15 +64,6 @@
         "tsConfigPath": "libs/s3/tsconfig.lib.json"
       }
     },
-    "security": {
-      "type": "library",
-      "root": "libs/security",
-      "entryFile": "index",
-      "sourceRoot": "libs/security/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/security/tsconfig.lib.json"
-      }
-    },
     "service-auth": {
       "type": "library",
       "root": "libs/service-auth",
@@ -154,22 +73,13 @@
         "tsConfigPath": "libs/service-auth/tsconfig.lib.json"
       }
     },
-    "shared": {
+    "shared-kernel": {
       "type": "library",
-      "root": "libs/shared",
+      "root": "libs/shared-kernel",
       "entryFile": "index",
-      "sourceRoot": "libs/shared/src",
+      "sourceRoot": "libs/shared-kernel/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/shared/tsconfig.lib.json"
-      }
-    },
-    "tutor-matching-service": {
-      "type": "application",
-      "root": "apps/tutor-matching-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/tutor-matching-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/tutor-matching-service/tsconfig.app.json"
+        "tsConfigPath": "libs/shared-kernel/tsconfig.lib.json"
       }
     },
     "types": {
@@ -179,15 +89,6 @@
       "sourceRoot": "libs/types/src",
       "compilerOptions": {
         "tsConfigPath": "libs/types/tsconfig.lib.json"
-      }
-    },
-    "user-service": {
-      "type": "application",
-      "root": "apps/user-service",
-      "entryFile": "main",
-      "sourceRoot": "apps/user-service/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/user-service/tsconfig.app.json"
       }
     }
   }

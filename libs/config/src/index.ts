@@ -1,5 +1,20 @@
-// Shared Configuration Library Exports - Only Reusable Components
-export * from './creators/base-config.creators';
-export * from './schemas/validation.schemas';
-export { BaseConfigurationService } from './services/base-configuration.service';
-export * from './types/configuration.types';
+/**
+ * @edtech/config
+ *
+ * Configuration utilities for EdTech platform microservices.
+ *
+ * @example
+ * ```typescript
+ * import { SSMConfigService } from '@edtech/config';
+ *
+ * // In module
+ * @Module({
+ *   providers: [SSMConfigService],
+ * })
+ *
+ * // In service
+ * constructor(private readonly ssmConfig: SSMConfigService) {}
+ * ```
+ */
+
+export { SSMConfigService } from './ssm/ssm-config.service';

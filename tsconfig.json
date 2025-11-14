@@ -18,12 +18,6 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@edtech-platform/shared": [
-        "libs/shared/src"
-      ],
-      "@edtech-platform/shared/*": [
-        "libs/shared/src/*"
-      ],
       "@edtech/auth": [
         "libs/auth/src"
       ],
@@ -48,11 +42,11 @@
       "@edtech/constants/*": [
         "libs/constants/src/*"
       ],
-      "@edtech/drizzle": [
-        "libs/drizzle/src"
+      "@edtech/nestjs-drizzle": [
+        "libs/nestjs-drizzle/src"
       ],
-      "@edtech/drizzle/*": [
-        "libs/drizzle/src/*"
+      "@edtech/nestjs-drizzle/*": [
+        "libs/nestjs-drizzle/src/*"
       ],
       "@edtech/s3": [
         "libs/s3/src"
@@ -60,17 +54,17 @@
       "@edtech/s3/*": [
         "libs/s3/src/*"
       ],
-      "@edtech/security": [
-        "libs/security/src"
-      ],
-      "@edtech/security/*": [
-        "libs/security/src/*"
-      ],
       "@edtech/service-auth": [
         "libs/service-auth/src"
       ],
       "@edtech/service-auth/*": [
         "libs/service-auth/src/*"
+      ],
+      "@edtech/shared-kernel": [
+        "libs/shared-kernel/src"
+      ],
+      "@edtech/shared-kernel/*": [
+        "libs/shared-kernel/src/*"
       ],
       "@edtech/types": [
         "libs/types/src"

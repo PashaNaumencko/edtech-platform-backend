@@ -132,7 +132,11 @@ export class AuthService {
   async signOut(accessToken: string): Promise<boolean> {
     try {
       this.logger.debug("Signing out user");
-      await this.cognitoAuthService.signOut(accessToken);
+      // Extract username from token
+      const decodedToken = await this.cognitoJwtService.verifyToken(accessToken);
+      const username = decodedToken["cognito:username"] || decodedToken.sub;
+
+      await this.cognitoAuthService.signOut(username);
       return true;
     } catch (error) {
       this.logger.error("Sign out error:", error);

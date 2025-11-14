@@ -1,6 +1,7 @@
 import {
   AdminGetUserCommand,
   AdminInitiateAuthCommand,
+  AdminUserGlobalSignOutCommand,
   CognitoIdentityProviderClient,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { Injectable, Logger } from "@nestjs/common";
@@ -146,6 +147,24 @@ export class CognitoAuthService {
     } catch (error) {
       this.logger.error(`Failed to get email for user ${userId}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Sign out user globally (revoke all tokens)
+   */
+  async signOut(username: string): Promise<void> {
+    try {
+      const command = new AdminUserGlobalSignOutCommand({
+        UserPoolId: this.userPoolId,
+        Username: username,
+      });
+
+      await this.cognitoClient.send(command);
+      this.logger.debug(`User ${username} signed out successfully`);
+    } catch (error) {
+      this.logger.error(`Failed to sign out user ${username}:`, error);
+      throw error;
     }
   }
 }
