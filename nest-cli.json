@@ -10,24 +10,6 @@
   "monorepo": true,
   "root": ".",
   "projects": {
-    "auth": {
-      "type": "library",
-      "root": "libs/auth",
-      "entryFile": "index",
-      "sourceRoot": "libs/auth/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/auth/tsconfig.lib.json"
-      }
-    },
-    "cache": {
-      "type": "library",
-      "root": "libs/cache",
-      "entryFile": "index",
-      "sourceRoot": "libs/cache/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/cache/tsconfig.lib.json"
-      }
-    },
     "config": {
       "type": "library",
       "root": "libs/config",
@@ -46,6 +28,15 @@
         "tsConfigPath": "libs/constants/tsconfig.lib.json"
       }
     },
+    "identity-service": {
+      "type": "application",
+      "root": "apps/identity-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/identity-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/identity-service/tsconfig.app.json"
+      }
+    },
     "nestjs-drizzle": {
       "type": "library",
       "root": "libs/nestjs-drizzle",
@@ -53,15 +44,6 @@
       "sourceRoot": "libs/nestjs-drizzle/src",
       "compilerOptions": {
         "tsConfigPath": "libs/nestjs-drizzle/tsconfig.lib.json"
-      }
-    },
-    "s3": {
-      "type": "library",
-      "root": "libs/s3",
-      "entryFile": "index",
-      "sourceRoot": "libs/s3/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/s3/tsconfig.lib.json"
       }
     },
     "service-auth": {

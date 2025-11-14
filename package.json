@@ -22,7 +22,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./tests/jest-e2e.config.js",
+    "test:e2e": "jest --config ./apps/edtech-platform-backend/tests/jest-e2e.config.js",
     "dev:setup": "./scripts/dev-setup.sh",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",

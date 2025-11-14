@@ -1,135 +1,101 @@
 version: '3.8'
+
 services:
-  # PostgreSQL for User Service
-  postgres-user:
-    container_name: edtech-postgres-user
-    image: postgres:15
-    environment:
-      POSTGRES_DB: user_service
-      POSTGRES_USER: user_service
-      POSTGRES_PASSWORD: user_password
+  # PostgreSQL Database for Identity Service (local development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: edtech-postgres
+    restart: unless-stopped
     ports:
       - "5432:5432"
-    volumes:
-      - postgres-user-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_service"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # PostgreSQL for Payment Service
-  postgres-payment:
-    container_name: edtech-postgres-payment
-    image: postgres:15
     environment:
-      POSTGRES_DB: payment_service
-      POSTGRES_USER: payment_service
-      POSTGRES_PASSWORD: payment_password
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: edtech
+      POSTGRES_PASSWORD: edtech_dev_password
+      POSTGRES_DB: edtech_identity
     volumes:
-      - postgres-payment-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U payment_service"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U edtech -d edtech_identity"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+    networks:
+      - edtech-network
 
-  # PostgreSQL for Reviews Service
-  postgres-reviews:
-    container_name: edtech-postgres-reviews
-    image: postgres:15
-    environment:
-      POSTGRES_DB: reviews_service
-      POSTGRES_USER: reviews_service
-      POSTGRES_PASSWORD: reviews_password
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres-reviews-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reviews_service"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # PostgreSQL for Learning Service
-  postgres-learning:
-    container_name: edtech-postgres-learning
-    image: postgres:15
-    environment:
-      POSTGRES_DB: learning_service
-      POSTGRES_USER: learning_service
-      POSTGRES_PASSWORD: learning_password
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres-learning-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U learning_service"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Redis for Communication Service and Caching
+  # Redis for caching and sessions (when needed)
   redis:
-    container_name: edtech-redis
     image: redis:7-alpine
+    container_name: edtech-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    command: redis-server --requirepass edtech_redis_password
     volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+    networks:
+      - edtech-network
 
-  # Neo4j for Tutor Matching Service
-  neo4j:
-    container_name: edtech-neo4j
-    image: neo4j:5.11
-    environment:
-      NEO4J_AUTH: neo4j/tutormatching
-      NEO4J_PLUGINS: '["apoc"]'
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    volumes:
-      - neo4j-data:/data
-    healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "tutormatching", "RETURN 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # LocalStack for AWS services
-  localstack:
-    container_name: edtech-localstack
-    image: localstack/localstack:latest
-    ports:
-      - "4566:4566"
-    environment:
-      - SERVICES=dynamodb,s3,lambda,eventbridge,cognito-idp,opensearch,rds
-      - DEBUG=1
-      - DATA_DIR=/tmp/localstack/data
-      - LAMBDA_EXECUTOR=docker
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    volumes:
-      - "./localstack-data:/tmp/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+  # Identity Service (uncomment when ready to run)
+  # identity-service:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/identity-service/Dockerfile
+  #     target: production
+  #   container_name: edtech-identity-service
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"  # Public API
+  #     - "3001:3001"  # Internal API
+  #   environment:
+  #     NODE_ENV: development
+  #     SERVICE_NAME: identity-service
+  #
+  #     # Database (local PostgreSQL)
+  #     DATABASE_URL: postgresql://edtech:edtech_dev_password@postgres:5432/edtech_identity
+  #
+  #     # Redis
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     REDIS_PASSWORD: edtech_redis_password
+  #
+  #     # AWS Cognito (real AWS, configured via Terraform local environment)
+  #     COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+  #     COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+  #     COGNITO_REGION: ${AWS_REGION:-us-east-1}
+  #
+  #     # AWS Credentials (for local development)
+  #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+  #     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+  #     AWS_REGION: ${AWS_REGION:-us-east-1}
+  #
+  #     # Observability
+  #     METRICS_ENABLED: false        # No CloudWatch costs during local dev
+  #     LOGS_CLOUDWATCH: false        # Console output only
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - edtech-network
+  #   healthcheck:
+  #     test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+  #     interval: 30s
+  #     timeout: 3s
+  #     start_period: 40s
+  #     retries: 3
 
 volumes:
-  postgres-user-data:
-  postgres-payment-data:
-  postgres-reviews-data:
-  postgres-learning-data:
-  redis-data:
-  neo4j-data: 
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  edtech-network:
+    driver: bridge
