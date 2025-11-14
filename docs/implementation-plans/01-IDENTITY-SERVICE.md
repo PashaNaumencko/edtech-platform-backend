@@ -60,39 +60,76 @@ The Identity Service is the foundational service responsible for:
 
 ## Phase 1: Project Setup
 
-### Step 1.1: Create Service Directory Structure
+### Step 1.1: Generate Service with NestJS CLI
+
+**Generate the microservice application:**
 
 ```bash
-# Create the service structure
-mkdir -p apps/identity-service/src/{domain,application,infrastructure,presentation}
+# Generate new microservice application
+nest generate app identity-service
 
-# Create domain subfolders
-mkdir -p apps/identity-service/src/domain/{aggregates,entities,value-objects,events,repositories,services,exceptions}
+# This creates:
+# - apps/identity-service/src/
+# - apps/identity-service/tsconfig.app.json
+# - Updates nest-cli.json automatically
+```
+
+### Step 1.2: Create Service Directory Structure
+
+**Use NestJS CLI to generate modules:**
+
+```bash
+# Generate core modules
+nest generate module domain --project identity-service --no-spec
+nest generate module application --project identity-service --no-spec
+nest generate module infrastructure --project identity-service --no-spec
+nest generate module presentation --project identity-service --no-spec
+
+# Generate domain submodules (optional, for better organization)
+nest generate module domain/aggregates --project identity-service --no-spec --flat
+nest generate module domain/services --project identity-service --no-spec --flat
+
+# Generate application submodules
+nest generate module application/commands --project identity-service --no-spec --flat
+nest generate module application/queries --project identity-service --no-spec --flat
+nest generate module application/event-handlers --project identity-service --no-spec --flat
+
+# Generate infrastructure submodules
+nest generate module infrastructure/persistence --project identity-service --no-spec --flat
+nest generate module infrastructure/external-services --project identity-service --no-spec --flat
+
+# Generate presentation controllers
+nest generate controller presentation/http/controllers/public/auth --project identity-service --no-spec --flat
+nest generate controller presentation/http/controllers/internal/user-internal --project identity-service --no-spec --flat
+```
+
+**Create remaining directory structure manually:**
+
+```bash
+# Create additional domain subfolders
+mkdir -p apps/identity-service/src/domain/{entities,value-objects,events,repositories,exceptions}
 
 # Create application subfolders
-mkdir -p apps/identity-service/src/application/{commands,queries,event-handlers,dtos,interfaces}
+mkdir -p apps/identity-service/src/application/{dtos,interfaces}
 
 # Create infrastructure subfolders
-mkdir -p apps/identity-service/src/infrastructure/{persistence/drizzle/{schema,repositories,mappers},messaging,external-services,config}
+mkdir -p apps/identity-service/src/infrastructure/persistence/drizzle/{schema,repositories,mappers}
+mkdir -p apps/identity-service/src/infrastructure/{messaging,config}
 
 # Create presentation subfolders
-mkdir -p apps/identity-service/src/presentation/http/{controllers/{public,internal},dtos,guards,interceptors,filters}
+mkdir -p apps/identity-service/src/presentation/http/{dtos,guards,interceptors,filters}
 ```
 
-### Step 1.2: Create Configuration Files
+**Explanation:**
+- NestJS CLI generates boilerplate code with proper NestJS decorators
+- `--project identity-service` targets the specific microservice
+- `--no-spec` skips test files (we'll create them later in Phase 6)
+- `--flat` prevents creating unnecessary subdirectories for modules
+- Some folders (like value-objects, events) are created manually as they don't need module files
 
-**`apps/identity-service/tsconfig.app.json`**
-```json
-{
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "declaration": false,
-    "outDir": "../../dist/apps/identity-service"
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
-}
-```
+### Step 1.3: Create Configuration Files
+
+**Note:** `tsconfig.app.json` is already created by `nest generate app` command.
 
 **`apps/identity-service/drizzle.config.ts`**
 ```typescript
@@ -112,9 +149,11 @@ export default defineConfig({
 });
 ```
 
-### Step 1.3: Update nest-cli.json
+### Step 1.4: Verify nest-cli.json
 
-Add identity-service to the projects section:
+**Note:** `nest generate app identity-service` automatically updates `nest-cli.json`.
+
+Verify the entry was added:
 
 ```json
 {
@@ -132,7 +171,7 @@ Add identity-service to the projects section:
 }
 ```
 
-### Step 1.4: Create Environment Variables
+### Step 1.5: Create Environment Variables
 
 Add to `.env.local`:
 ```bash

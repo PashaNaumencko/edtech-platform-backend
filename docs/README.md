@@ -59,6 +59,18 @@ Detailed 7-phase implementation plan for Identity Service covering domain, infra
 **[implementation-plans/04-INFRASTRUCTURE-TERRAFORM.md](implementation-plans/04-INFRASTRUCTURE-TERRAFORM.md)** - Terraform Guide
 Complete infrastructure deployment guide with Terraform modules for AWS services, cost optimization, and troubleshooting.
 
+**[implementation-plans/05-SHARED-LIBRARIES.md](implementation-plans/05-SHARED-LIBRARIES.md)** - Shared Libraries Guide
+Step-by-step implementation for @edtech/auth, @edtech/s3, and @edtech/cache libraries with AWS integrations.
+
+**[implementation-plans/06-SERVICE-TO-SERVICE-AUTH.md](implementation-plans/06-SERVICE-TO-SERVICE-AUTH.md)** - Service-to-Service Authentication
+Security best practices and implementation guide for internal API authentication with API keys, JWT tokens, and AWS IAM roles.
+
+**[implementation-plans/07-OBSERVABILITY-CLOUDWATCH.md](implementation-plans/07-OBSERVABILITY-CLOUDWATCH.md)** - CloudWatch Observability
+Complete observability setup with CloudWatch Logs, Metrics, Alarms, Dashboards, and optional AWS X-Ray distributed tracing.
+
+**[implementation-plans/08-OBSERVABILITY-LIBRARIES.md](implementation-plans/08-OBSERVABILITY-LIBRARIES.md)** - Observability Library
+Unified @edtech/observability library with structured logging, CloudWatch Metrics, correlation IDs, and HTTP interceptors - all in one package.
+
 ---
 
 ### 🎓 Advanced Topics
